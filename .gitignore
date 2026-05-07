@@ -27,6 +27,7 @@ ENV/
 
 # AFSIM event recordings
 *.aer
+*.evt
 
 # Engine and simulation log files
 *.log

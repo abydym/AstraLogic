@@ -1,0 +1,71 @@
+# ============================================
+# AstraLogic 演示场景
+# 2 颗 LEO 卫星 + 1 个地面站
+# ============================================
+
+start_date jan 1 2026
+start_time 00:00:00.00
+end_time 30 min
+
+# --- 事件输出 ---
+event_pipe
+  file demo_output.aer
+  maximum_mover_update_interval 0 sec
+end_event_pipe
+
+event_output
+  file demo_output.evt
+  enable all
+  time_format s
+end_event_output
+
+csv_event_output
+  file demo_output.csv
+  enable all
+end_csv_event_output
+
+# --- 卫星 1：LEO-A ---
+platform LEO_A WSF_PLATFORM
+  icon satellite
+  side blue
+  empty_mass 200 kg
+
+  add mover WSF_SPACE_MOVER
+    update_interval 10 sec
+    eccentricity 0.001
+    semi_major_axis 7078 km
+    raan 0 deg
+    inclination 53 deg
+    true_anomaly 0 deg
+    argument_of_periapsis 0 deg
+  end_mover
+end_platform
+
+# --- 卫星 2：LEO-B（相位差 180 度）---
+platform LEO_B WSF_PLATFORM
+  icon satellite
+  side blue
+  empty_mass 200 kg
+
+  add mover WSF_SPACE_MOVER
+    update_interval 10 sec
+    eccentricity 0.001
+    semi_major_axis 7078 km
+    raan 0 deg
+    inclination 53 deg
+    true_anomaly 180 deg
+    argument_of_periapsis 0 deg
+  end_mover
+end_platform
+
+# --- 地面站：北京 ---
+platform GS_BEIJING WSF_PLATFORM
+  icon ground_station
+  side blue
+  position 39.9n 116.4e
+end_platform
+
+# --- 打印卫星位置的脚本 ---
+execute at_interval_of 60 sec
+  writeln("[T=", TIME_NOW, "] LEO_A pos check");
+end_execute
