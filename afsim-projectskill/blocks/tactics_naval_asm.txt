@@ -1,0 +1,377 @@
+# =============================================================================
+# NAVAL ASM TACTICS — anti-ship missile engagement + weapon definitions
+# Extracted from demos/ship_ad/ and demos/new_guidance/
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# NAVAL_ASM_TACTICS — WSF_TASK_PROCESSOR for surface-target ASM engagement
+# Source: demos/ship_ad/platforms/naval_asm_tactics.txt
+# ---------------------------------------------------------------------------
+processor NAVAL_ASM_TACTICS WSF_TASK_PROCESSOR
+
+   script_variables
+      string SENSOR_NAME               = "";
+      string SENSOR_TRACK_MODE         = "TRACK";
+      string WEAPON_NAME               = "";
+
+      double REQUIRED_TRACK_QUALITY    = 0.49;
+      int SALVO_SIZE                   = 1;
+
+      string mTrackTaskStr      = "Track";
+      string mShootTaskStr      = "Shoot";
+   end_script_variables
+
+   script bool FiringNow()
+      return (WeaponsActiveFor(TRACK.TrackId()) > 0);
+   end_script
+
+   script bool InterceptResultsKnown()
+      return (TimeSinceWeaponLastTerminatedFor(TRACK.TrackId()) > 0.0);
+   end_script
+
+   script bool InInterceptEnvelopeOf(WsfWeapon aWeapon)
+      extern bool Local_ASM_LaunchComputer(WsfTrack, WsfWeapon, double);
+      return Local_ASM_LaunchComputer(TRACK, aWeapon, 0.0);
+   end_script
+
+   script bool HasAcquired()
+      return (TRACK.TrackQuality() > 0.75);
+   end_script
+
+   script bool TrackingNow()
+      if (SENSOR_NAME == "")
+         return (TRACK.TrackQuality() > REQUIRED_TRACK_QUALITY);
+      else
+         return (TRACK.TrackQuality() > 0.95);
+   end_script
+
+   script bool LaunchWeapon()
+      WsfWeapon weapon = PLATFORM.Weapon(WEAPON_NAME);
+      bool canInterceptNow = false;
+      if (weapon.IsTurnedOn() && (weapon.QuantityRemaining() >= SALVO_SIZE))
+         canInterceptNow = InInterceptEnvelopeOf(weapon);
+      bool launched = false;
+      if (canInterceptNow)
+      {
+         weapon.CueToTarget(TRACK);
+         launched = FireAt(TRACK, mShootTaskStr, weapon, SALVO_SIZE);
+         if (launched)
+            writeln_d("*** T=", TIME_NOW, " ", PLATFORM.Name(), " ",
+                      TRACK.TargetName(), " R=", PLATFORM.SlantRangeTo(TRACK),
+                      " FIRE!!!!");
+      }
+      return launched;
+   end_script
+
+   script bool IsEngageable()
+      return (((PLATFORM == PLATFORM.Commander()) ||
+               (TasksReceivedFor(TRACK.TrackId()) > 0) ||
+               (OperatingLevelFor("ENGAGE") > 0))) &&
+              (TRACK.SurfaceDomain());
+   end_script
+
+   script int WeaponsAvailable()
+      int quantity = 0;
+      WsfWeapon weapon = PLATFORM.Weapon(WEAPON_NAME);
+      if (weapon.IsTurnedOn()) quantity = weapon.QuantityRemaining();
+      return quantity;
+   end_script
+
+   script bool Engage()
+      bool engaging = false;
+      if (WeaponsAvailable() < 1) return false;
+      WsfSensor sensor = PLATFORM.Sensor(SENSOR_NAME);
+      if (! sensor.IsValid()) return engaging;
+      if (sensor.ActiveRequestCount(SENSOR_TRACK_MODE) <
+          sensor.MaximumRequestCount(SENSOR_TRACK_MODE))
+      {
+         if (TRACK.BelievedAlive() &&
+             InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME)) &&
+             (TRACK.TrackQuality() > REQUIRED_TRACK_QUALITY))
+            engaging = StartTracking(TRACK, mTrackTaskStr, sensor, SENSOR_TRACK_MODE);
+      }
+      return engaging;
+   end_script
+
+   evaluation_interval DETECTED 2.0 sec
+   state DETECTED
+      next_state DETECTED
+         if (TRACK.IFF_Friend()) { CancelTask(TRACK.TrackId()); return true; }
+         return false;
+      end_next_state
+      next_state ENGAGEABLE
+         return (TRACK.BelievedAlive() && (! TRACK.IFF_Friend()) && IsEngageable());
+      end_next_state
+   end_state
+
+   evaluation_interval ENGAGEABLE 2.0 sec
+   state ENGAGEABLE
+      next_state DETECTED
+         return (TRACK.BelievedDead() || TRACK.IFF_Friend() ||
+                 ((TasksAssignedFor(TRACK.TrackId(), "ENGAGE") < 1) && (! IsEngageable())));
+      end_next_state
+      next_state ENGAGE
+         Engage();
+         if (SENSOR_NAME == "")
+            return (TRACK.BelievedAlive() &&
+                    InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME)) &&
+                    (TRACK.TrackQuality() > REQUIRED_TRACK_QUALITY));
+         else
+            return (TrackingNow() && (TasksAssignedFor(TRACK.TrackId(), mTrackTaskStr) > 0));
+      end_next_state
+   end_state
+
+   evaluation_interval ENGAGE 2.0 sec
+   state ENGAGE
+      next_state ENGAGEABLE
+         return (TRACK.BelievedDead() || ! TrackingNow());
+      end_next_state
+      next_state FIRING
+         bool launched = false;
+         if (TRACK.BelievedAlive() && TrackingNow() && ! FiringNow() &&
+             InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME)))
+            launched = LaunchWeapon();
+         return launched;
+      end_next_state
+   end_state
+
+   evaluation_interval FIRING 2.0 sec
+   state FIRING
+      next_state ENGAGE
+         if (TRACK.BelievedDead() ||
+             ! InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME)) ||
+             (! FiringNow() && (TasksAssignedFor(TRACK.TrackId(), mShootTaskStr) < 1)) ||
+             (WeaponsAvailable() < 1) || ! TrackingNow())
+         { CancelTask(TRACK.TrackId()); return true; }
+         return false;
+      end_next_state
+   end_state
+
+end_processor
+
+# ---------------------------------------------------------------------------
+# ASM_TACTICS — WSF_TASK_PROCESSOR for missile-in-flight guidance
+# (cruise → seeker activation → terminal dive)
+# Source: demos/ship_ad/weapons/agm/asm_tactics.txt
+# ---------------------------------------------------------------------------
+processor ASM_TACTICS WSF_TASK_PROCESSOR
+
+   script_variables
+      double CRUISE_ALT          = 50.0;
+      double TERMINAL_ALT        = 10.0;
+      double SEEKER_ACTIVATION   = 10000.0;
+      string SENSOR_NAME;
+      string SENSOR_TRACK_MODE   = "TRACK";
+
+      string mTrackTaskStr      = "Track";
+   end_script_variables
+
+   evaluation_interval ENROUTE 1.0 sec
+   state ENROUTE
+      on_entry
+         double heading = PLATFORM.TrueBearingTo(TRACK);
+         PLATFORM.TurnToHeading(heading);
+         PLATFORM.GoToAltitude(CRUISE_ALT);
+      end_on_entry
+      next_state ACQUIRING_TARGET
+         PLATFORM.GoToLocation(TRACK.Latitude(), TRACK.Longitude(), CRUISE_ALT);
+         bool tracking = false;
+         if (PLATFORM.GroundRangeTo(TRACK) < SEEKER_ACTIVATION)
+         {
+            WsfSensor seeker = PLATFORM.Sensor(SENSOR_NAME);
+            if (seeker.IsValid())
+               tracking = StartTracking(TRACK, mTrackTaskStr, seeker, SENSOR_TRACK_MODE);
+         }
+         return tracking;
+      end_next_state
+   end_state
+
+   evaluation_interval ACQUIRING_TARGET 1.0 sec
+   state ACQUIRING_TARGET
+      next_state TERMINAL
+         bool terminal = false;
+         if (TRACK.TrackQuality() > 0.95)
+            terminal = PLATFORM.GoToLocation(TRACK.Latitude(), TRACK.Longitude(), TERMINAL_ALT);
+         return terminal;
+      end_next_state
+   end_state
+
+   evaluation_interval TERMINAL 1.0 sec
+   state TERMINAL
+      next_state TERMINAL
+         PLATFORM.GoToLocation(TRACK.Latitude(), TRACK.Longitude(), TERMINAL_ALT);
+         return false;
+      end_next_state
+   end_state
+
+end_processor
+
+route ASM_DUMMY
+   label start
+      offset 0 0 km speed 306 m/s altitude 50.0 m msl
+      offset 1 0 km speed 306 m/s altitude 50.0 m msl
+end_route
+
+# ---------------------------------------------------------------------------
+# ASM Launch Computers
+# Source: demos/ship_ad/weapons/agm/
+# ---------------------------------------------------------------------------
+script bool RED_ASM_MSL_LaunchComputer(WsfTrack aTrack,
+                                 WsfPlatform aLauncher,
+                                 double aLaunchDelay)
+   bool canIntercept = false;
+   double tgtAlt = aLauncher.RelativeAltitudeOf(aTrack);
+   double shootDelay = 0.0;
+   double maxRng = 120000;
+   double maxTOF = 392.0;
+   double avgSpd = maxRng / maxTOF;
+   WsfWaypoint intercept = WsfWaypoint();
+   double tti = aLauncher.InterceptLocation2D(aTrack, intercept, avgSpd,
+aLaunchDelay + shootDelay);
+   if ((tti > 0.0) && (tti < maxTOF)) canIntercept = true;
+   return canIntercept;
+end_script
+
+script bool ASM_LaunchComputer(WsfTrack aTrack, WsfPlatform aAssignee, double aLaunchDelay)
+   extern bool RED_ASM_MSL_LaunchComputer(WsfTrack, WsfPlatform, double);
+   bool canIntercept = false;
+   string subType = aAssignee.Type();
+   if (subType == "RED_MISSILE_DESTROYER")
+      canIntercept = RED_ASM_MSL_LaunchComputer(aTrack, aAssignee, aLaunchDelay);
+   return canIntercept;
+end_script
+
+script bool Local_ASM_LaunchComputer(WsfTrack aTrack, WsfWeapon aWeapon, double aLaunchDelay)
+   extern bool RED_ASM_MSL_LaunchComputer(WsfTrack, WsfPlatform, double);
+   bool canIntercept = false;
+   string weaponType = aWeapon.Type();
+   WsfPlatform platform = aWeapon.Platform();
+   if (weaponType == "RED_ASM_MSL")
+      canIntercept = RED_ASM_MSL_LaunchComputer(aTrack, platform, aLaunchDelay);
+   return canIntercept;
+end_script
+
+# ---------------------------------------------------------------------------
+# RED_ASM_MSL — anti-ship missile (subsonic cruise, radar seeker)
+# Source: demos/ship_ad/weapons/agm/red_asm_msl.txt
+# ---------------------------------------------------------------------------
+platform_type RED_ASM_MSL WSF_PLATFORM
+  icon HARPOON
+  radar_signature VEHICLE_RADAR_SIGNATURE
+  mover WSF_AIR_MOVER
+    default_dive_rate            27 m/s
+    default_radial_acceleration  2.0 g
+    maximum_speed                306 m/s
+  end_mover
+  comm uplink WSF_COMM_TRANSCEIVER
+     internal_link data_mgr
+  end_comm
+  processor data_mgr WSF_TRACK_PROCESSOR
+     purge_interval   400 sec
+  end_processor
+  processor task_mgr ASM_TACTICS
+     on_initialize
+        CRUISE_ALT          = 25;
+        SENSOR_NAME         = "seeker";
+        SENSOR_TRACK_MODE   = "default";
+        SEEKER_ACTIVATION   = 11000;
+        TERMINAL_ALT        = 6;
+     end_on_initialize
+  end_processor
+  sensor seeker RED_MISSILE_SEEKER_1
+    off
+    ignore_same_side
+    processor data_mgr
+  end_sensor
+  processor fuse WSF_GROUND_TARGET_FUSE
+    max_time_of_flight_to_detonate  392.0 sec
+  end_processor
+end_platform_type
+
+weapon_effects RED_ASM_MSL_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 20.0 m 0.75
+end_weapon_effects
+
+weapon RED_ASM_MSL WSF_EXPLICIT_WEAPON
+  launched_platform_type RED_ASM_MSL
+  weapon_effects RED_ASM_MSL_EFFECT
+  script void on_create(WsfPlatform aWeapon, WsfTrack aTrack)
+     WsfRoute flight = aWeapon.CreateRoute("ASM_DUMMY");
+     flight.Transform(aWeapon.Latitude(), aWeapon.Longitude(), aTrack.Bearing());
+     aWeapon.FollowRoute(flight);
+  end_script
+  quantity 8
+  slew_mode           azimuth
+  azimuth_slew_limits -90.0 deg 90.0 deg
+  pitch               15 deg
+end_weapon
+
+# ---------------------------------------------------------------------------
+# BLUE_ASM_MISSILE — Harpoon-like ASM (multi-phase guidance: cruise/popup/dive)
+# Source: demos/new_guidance/weapons/agm/blue_asm_missile.txt
+# ---------------------------------------------------------------------------
+aero BLUE_ASM_MISSILE_AERO WSF_AERO
+   cd_zero_subsonic          0.10
+   cd_zero_supersonic        0.25
+   mach_begin_cd_rise        0.95
+   mach_end_cd_rise          1.30
+   mach_max_supersonic       4.00
+   reference_area            0.092347 m2
+   cl_max                    10.0
+   aspect_ratio              16.0
+end_aero
+
+weapon_effects BLUE_ASM_MISSILE_LETHALITY WSF_GRADUATED_LETHALITY
+   radius_and_pk 100 m 0.7
+end_weapon_effects
+
+platform_type BLUE_ASM_MISSILE WSF_PLATFORM
+   icon CRUISE_MISSILE
+   weapon_effects BLUE_ASM_MISSILE_LETHALITY
+
+   mover WSF_GUIDED_MOVER
+      update_interval        0.5 s
+      integration_timestep   0.05 s
+      stage 1
+         initial_mass        519 kg
+         fuel_mass           200 kg
+         thrust              2900 Nt
+         thrust_duration      1000 sec
+         aero                BLUE_ASM_MISSILE_AERO
+         thrust_delay        1.0 sec
+      end_stage
+      route
+        position 39.0n 89.5w
+        position 38.8n 89.5w
+      end_route
+   end_mover
+
+   processor guidance WSF_GUIDANCE_COMPUTER
+      phase CRUISE
+         allow_route_following    true
+         commanded_altitude       75 m
+         commanded_speed          537 mph
+         next_phase POPUP when target_slant_range < 3000 m
+         maximum_pitch_angle           50 deg
+         proportional_navigation_gain  10.0
+         velocity_pursuit_gain         10.0
+      end_phase
+      phase POPUP
+         commanded_altitude 6000 m
+         next_phase DIVE when target_elevation < -20 deg
+         proportional_navigation_gain  10.0
+         velocity_pursuit_gain         5.0
+      end_phase
+      phase DIVE
+         velocity_pursuit_gain         5.0
+      end_phase
+   end_processor
+
+   processor fuse WSF_GROUND_TARGET_FUSE
+   end_processor
+end_platform_type
+
+weapon BLUE_ASM_MISSILE WSF_EXPLICIT_WEAPON
+      launched_platform_type BLUE_ASM_MISSILE
+      quantity 1
+end_weapon

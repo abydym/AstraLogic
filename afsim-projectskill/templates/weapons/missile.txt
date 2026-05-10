@@ -1,0 +1,20 @@
+weapon_effects MSL_1_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 50.0 m 1.0
+end_weapon_effects
+
+platform_type MSL_1_AIRFRAME WSF_PLATFORM
+   icon missile
+   height 1.0 m
+   length 5.0 m
+   width 1.0 m
+   mover WSF_STRAIGHT_LINE_MOVER
+      average_speed 300 kts
+   end_mover
+   processor fuse WSF_GROUND_TARGET_FUSE
+   end_processor
+end_platform_type
+
+weapon RED_TANK_MISSILE WSF_EXPLICIT_WEAPON
+   launched_platform_type MSL_1_AIRFRAME
+   weapon_effects MSL_1_EFFECT
+end_weapon

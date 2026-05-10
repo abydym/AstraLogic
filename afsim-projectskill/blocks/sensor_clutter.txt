@@ -1,0 +1,75 @@
+# =============================================================================
+# AFSIM Template: Clutter Model for Radar
+# Extracted from demos/sensor_demos/
+#   Source: clutter_demo.txt
+# =============================================================================
+# This template provides clutter model definition and radar with clutter processing.
+
+# --- Global Environment (for clutter) ---
+global_environment
+   land_cover general
+   land_formation rolling
+   sea_state 2
+end_global_environment
+
+# --- Clutter Model (Surface Clutter) ---
+clutter_model EW_RADAR_CLUTTER surface_clutter
+end_clutter_model
+
+# --- Clutter Model (None / Disabled) ---
+clutter_model CLUTTER_NONE none
+end_clutter_model
+
+# --- Circular Antenna Pattern ---
+antenna_pattern CIRCULAR_ANTENNA
+   circular_pattern
+      beamwidth     5 deg
+      peak_gain     30 db
+end_antenna_pattern
+
+# --- Radar with Clutter ---
+# NOTE: pulse_width and pulse_repetition_frequency are required for clutter models.
+sensor EW_RADAR_CLUTTER WSF_RADAR_SENSOR
+   frame_time                         10 sec
+   antenna_height                     10 m
+   antenna_tilt                       1 deg
+   scan_mode                          azimuth
+   azimuth_scan_limits                -180 deg 180 deg
+
+   transmitter
+      antenna_pattern                 CIRCULAR_ANTENNA
+      power                           100 kw
+      frequency                       1.2 ghz
+      polarization                    vertical
+      pulse_width                     1 us
+      pulse_repetition_frequency      1.5 khz
+      attenuation_model               blake
+   end_transmitter
+
+   receiver
+   end_receiver
+
+   clutter_model                       EW_RADAR_CLUTTER
+   clutter_attenuation_factor          -10 db
+   detection_threshold                 12.8 db
+
+   hits_to_establish_track             2 3
+   hits_to_maintain_track              1 3
+
+   reports_range
+   reports_bearing
+   reports_elevation
+end_sensor
+
+# --- Radar Signature (Target) ---
+radar_signature TARGET_RADAR_SIG
+   constant 100 m^2
+end_radar_signature
+
+# --- Generic Target Platform ---
+platform_type TARGET_PLATFORM WSF_PLATFORM
+   icon B-747
+   radar_signature TARGET_RADAR_SIG
+   mover WSF_AIR_MOVER
+   end_mover
+end_platform_type

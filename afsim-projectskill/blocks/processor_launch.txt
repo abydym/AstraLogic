@@ -1,0 +1,49 @@
+# =============================================================================
+# TEMPLATE: Launch Weapon Processor (Script-based)
+# Source: demos/ballistic/processors/launch_weapon_processor.txt
+# =============================================================================
+# A script processor that launches a ballistic missile at a target track.
+# Configurable via script variables:
+#   WEAPON_NAME    - which weapon slot to fire
+#   TIME_TO_LAUNCH - fixed launch time (0 = fire on first update)
+#   LAUNCH_RANDOM  - if true, pick random time in [MIN_TIME, MAX_TIME]
+#   MIN_TIME / MAX_TIME - range for random launch time
+# =============================================================================
+
+processor LAUNCH_WEAPON_PROCESSOR WSF_SCRIPT_PROCESSOR
+   script_variables
+      string WEAPON_NAME = " ";    # set in the platform_type definition
+      double TIME_TO_LAUNCH = 0;   # if scenario doesn't give time, fire first pass
+      bool LAUNCH_RANDOM    = 0;   # Default is not to fire at a random time
+      double MIN_TIME       = 10.0;
+      double MAX_TIME       = 1000.0;
+      int trackIndex        = 0;   # used internally
+   end_script_variables
+
+   on_initialize
+      if (LAUNCH_RANDOM == 1)
+          TIME_TO_LAUNCH = RANDOM.Uniform(MIN_TIME, MAX_TIME);
+   end_on_initialize
+
+   update_interval 10.0 sec
+   on_update
+      if (TIME_NOW > TIME_TO_LAUNCH)
+         {
+         WsfLocalTrackList trackList = PLATFORM.MasterTrackList();
+         WsfWeapon tbm = PLATFORM.Weapon(WEAPON_NAME);
+         if ((PLATFORM.WeaponCount() > 0) && (trackIndex < trackList.TrackCount()))
+            {
+            if (tbm.IsValid() && (tbm.QuantityRemaining() > 0))
+               {
+               tbm.CueToTarget(trackList.TrackEntry(trackIndex));
+               tbm.Fire(trackList.TrackEntry(trackIndex));
+               trackIndex = trackIndex + 1;
+               }
+            }
+          else
+            {
+             PROCESSOR.TurnOff();
+            }
+         }
+   end_on_update
+end_processor

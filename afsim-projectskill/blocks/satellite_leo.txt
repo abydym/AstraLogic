@@ -1,0 +1,44 @@
+antenna_pattern SAT_28GHZ_ANT
+  uniform_pattern
+    peak_gain 25 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+platform_type LEO_SAT WSF_PLATFORM
+   icon Satellite
+   side blue
+   height 3 m  length 5 m  width 5 m
+
+   mover WSF_AIR_MOVER
+      maximum_speed 14500 kts  minimum_speed 10000 kts
+      maximum_altitude 600000 m  minimum_altitude 500000 m
+   end_mover
+
+   comm ka_downlink WSF_RADIO_XMTR
+      earth_radius_multiplier 1.0
+      antenna_pattern SAT_28GHZ_ANT
+      frequency 28 ghz
+      power 30 W
+      internal_loss 0.5 dB
+      transfer_rate 10 mbit/s
+      network_name LeoSatNet
+   end_comm
+
+   processor link_budget WSF_SCRIPT_PROCESSOR
+      update_interval 1 sec
+      on_update
+         WsfPlatform gs = WsfSimulation.FindPlatform("Wuhan_Ground_Station");
+         if (!gs.IsValid()) return;
+
+         double slant = PLATFORM.SlantRangeTo(gs);
+         double ground = PLATFORM.GroundRangeTo(gs);
+         double delay_ms = slant / 299792.458;
+
+         string link = "DOWN";
+         if (slant < 2500000.0) link = "UP";
+
+         writeln(TIME_NOW, " RNG=", slant, " GRND=", ground, " DELAY=", delay_ms, "ms LINK=", link);
+      end_on_update
+   end_processor
+
+end_platform_type

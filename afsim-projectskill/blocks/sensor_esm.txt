@@ -1,0 +1,90 @@
+# =============================================================================
+# AFSIM Template: ESM / ESM TDOA Sensors
+# Extracted from demos/sensor_demos/
+#   Sources: esm_demo.txt, esm_tdoa_demo.txt
+# =============================================================================
+# This template provides ESM sensor definitions, antenna patterns, error models,
+# and TRIMSIM processor.
+
+# --- ESM Antenna Pattern (Omni) ---
+antenna_pattern ESM_ANTENNA
+   constant 0 db
+end_antenna_pattern
+
+# --- ESM Sensor ---
+sensor ESM_SENSOR WSF_ESM_SENSOR
+   frame_time              4 sec
+   slew_mode               fixed
+   maximum_range           400 km
+
+   receiver
+      antenna_pattern      ESM_ANTENNA
+      detection_threshold  5 db
+      noise_power          -180 dbw
+      internal_loss        0 db
+   end_receiver
+
+   frequency_band          0.1 ghz  20 ghz
+
+   reports_location
+   reports_type
+   reports_frequency
+end_sensor
+
+# --- ESM Sensor with TDOA error model ---
+sensor ESM_SENSOR_TDOA WSF_ESM_SENSOR
+   frame_time              4 sec
+   slew_mode               fixed
+   maximum_range           400 km
+
+   receiver
+      antenna_pattern      ESM_ANTENNA
+      detection_threshold  5 db
+      noise_power          -180 dbw
+      internal_loss        0 db
+   end_receiver
+
+   # TDOA-specific error model
+   error_model trimsim_error
+      north_position_error_sigma      0.1 ft
+      east_position_error_sigma       0.1 ft
+      down_position_error_sigma       0.1 ft
+      reference_time_error            5.0 ns
+      inter_system_time_delay         5.0 ns
+      sensor_timing_error             0.0 s
+      atmospheric_refraction_residual 0.0
+   end_error_model
+
+   frequency_band          0.1 ghz  20 ghz
+
+   reports_location
+   reports_type
+   reports_frequency
+end_sensor
+
+# --- TRIMSIM Processor (TDOA localization) ---
+processor TRIMSIM_PROCESSOR WSF_TRIMSIM_PROCESSOR
+   debug
+   debug_level 2
+   minimum_detections 2
+end_processor
+
+# --- Platform Type: Striker with ESM ---
+platform_type STRIKER_PLATFORM_ESM WSF_PLATFORM
+   icon F-18E
+   side blue
+   radar_signature FIGHTER_RADAR_SIGNATURE
+   mover WSF_AIR_MOVER end_mover
+   sensor esm ESM_SENSOR
+      on
+      processor track_manager
+      ignore_same_side
+   end_sensor
+   processor track_manager WSF_TRACK_PROCESSOR
+   end_processor
+end_platform_type
+
+# --- Radar Signature (Fighter, constant 10 m^2) ---
+radar_signature FIGHTER_RADAR_SIGNATURE
+   constant 10 m^2
+end_radar_signature

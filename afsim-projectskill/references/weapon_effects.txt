@@ -1,0 +1,22 @@
+# WSF_GRADUATED_LETHALITY — Command Reference
+# Extracted from AFSIM 2.9.0 Reference Manual
+# Commands found: 18
+
+  discrete/interpolated
+  use_3d_radius/use_2d_radius
+  target_type<target_type>
+  radius_and_pk<length-value><pk-value>
+  pk_and_radius<pk-value><length-value>
+  region<platform_type><region_name>
+  target_type<platform_type>
+  category<category_name>
+  damage_radius<length-value>
+  minimum_energy<energy-value>
+  minimum_energy_density<fluence-value>
+  pk_energy_tabletable
+  manage_kills<boolean-value>
+  自定义效果：要在目标区域上定义自定义脚本效果，可以实现on_target_damaged或
+  能量密度计算：确保正确设置damage_radius和minimum_energy_density以准确计算
+  MobilityKill(MK)对移动者施加完全伤害（平台部件DamageFactor=1.0，或总伤害），
+  FirepowerKill(FK)对平台上的每个武器施加完全伤害（平台部件DamageFactor=1.0，
+  CatastrophicKill(KK)对平台的所有方面及其所有附加部件施加完全伤害，即平台死亡，

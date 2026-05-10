@@ -1,0 +1,87 @@
+# =============================================================================
+# TEMPLATE: Ballistic Missile Launcher Platform Types
+# Source: demos/ballistic/platforms/red_srbm_*_launcher.txt, red_mrbm_2_launcher.txt
+# =============================================================================
+# Generic ground-based ballistic missile launcher (SRBM / MRBM).
+# Uses LAUNCH_WEAPON_PROCESSOR for script-driven launch timing.
+# Each launcher holds a single SSM weapon.
+#
+# REQUIRES (via file_path ../base_types):
+#   weapons/ssm/red_srbm_1.txt  (or variant)
+#   processors/launch_weapon_processor.txt
+# =============================================================================
+
+# --- Short Range: RED_SRBM_1_LAUNCHER ---
+platform_type RED_SRBM_1_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+   side red
+   mover WSF_GROUND_MOVER end_mover
+   weapon red_srbm_1 RED_SRBM_1
+      quantity 1
+   end_weapon
+   processor launch_weapon_processor LAUNCH_WEAPON_PROCESSOR
+      script_variables
+         WEAPON_NAME = "red_srbm_1";
+      end_script_variables
+   end_processor
+end_platform_type
+
+# --- Short Range: RED_SRBM_2_LAUNCHER ---
+platform_type RED_SRBM_2_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+   side red
+   mover WSF_GROUND_MOVER end_mover
+   weapon red_srbm_2 RED_SRBM_2
+      quantity 1
+   end_weapon
+   processor launch_weapon_processor LAUNCH_WEAPON_PROCESSOR
+      script_variables
+         WEAPON_NAME = "red_srbm_2";
+      end_script_variables
+   end_processor
+end_platform_type
+
+# --- Short Range: RED_SRBM_3_LAUNCHER ---
+platform_type RED_SRBM_3_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+   side red
+   mover WSF_GROUND_MOVER end_mover
+   weapon red_srbm_3 RED_SRBM_3
+      quantity 1
+   end_weapon
+   processor launch_weapon_processor LAUNCH_WEAPON_PROCESSOR
+      script_variables
+         WEAPON_NAME = "red_srbm_3";
+      end_script_variables
+   end_processor
+end_platform_type
+
+# --- Short Range: RED_SRBM_4_LAUNCHER ---
+platform_type RED_SRBM_4_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+   side red
+   mover WSF_GROUND_MOVER end_mover
+   weapon red_srbm_4 RED_SRBM_4
+      quantity 1
+   end_weapon
+   processor launch_weapon_processor LAUNCH_WEAPON_PROCESSOR
+      script_variables
+         WEAPON_NAME = "red_srbm_4";
+      end_script_variables
+   end_processor
+end_platform_type
+
+# --- Medium Range: RED_MRBM_2_LAUNCHER ---
+platform_type RED_MRBM_2_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+   side red
+   mover WSF_GROUND_MOVER end_mover
+   weapon red_mrbm_2 RED_MRBM_2
+      quantity 1
+   end_weapon
+   processor launch_weapon_processor LAUNCH_WEAPON_PROCESSOR
+      script_variables
+         WEAPON_NAME = "red_mrbm_2";
+      end_script_variables
+   end_processor
+end_platform_type

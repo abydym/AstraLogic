@@ -1,0 +1,39 @@
+# Ground Gateway Station platform type
+# Generated from blocks/leo_constellation/gateway_station_block.txt
+
+antenna_pattern GS_KA_ANT
+  uniform_pattern
+    peak_gain 33 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+platform_type GATEWAY_GS WSF_PLATFORM
+   icon C4I
+   side blue
+
+   comm ka_receiver WSF_RADIO_RCVR
+      antenna_pattern GS_KA_ANT
+      frequency 27.5 ghz
+      internal_loss 2.0 dB
+      noise_power -130 dBm
+      detection_threshold 12 dB
+      network_name GroundFeederNet
+   end_comm
+
+   comm ka_xmtr WSF_RADIO_XMTR
+      antenna_pattern GS_KA_ANT
+      frequency 17.5 ghz
+      power 20 W
+      internal_loss 2.0 dB
+      transfer_rate 8 mbit/s
+      network_name GroundFeederNet
+   end_comm
+
+   processor gs_monitor WSF_SCRIPT_PROCESSOR
+      update_interval 5 sec
+      on_update
+         writeln(TIME_NOW, " ", PLATFORM.Name(), " ONLINE");
+      end_on_update
+   end_processor
+
+end_platform_type

@@ -1,0 +1,13 @@
+# =============================================================================
+# TEMPLATE: Simple Air Target Platform
+# Source: demos/launcher/platforms/air_target.txt
+# =============================================================================
+# Minimal air target platform for use as a moving adversary/target in
+# SAM engagement scenarios.
+# =============================================================================
+
+platform_type AIRPLANE WSF_PLATFORM
+  icon F-18
+  mover WSF_AIR_MOVER
+  end_mover
+end_platform_type

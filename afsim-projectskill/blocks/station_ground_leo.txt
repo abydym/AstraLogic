@@ -1,0 +1,27 @@
+antenna_pattern GS_18GHZ_ANT
+  uniform_pattern
+    peak_gain 32 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+platform_type SAT_GS WSF_PLATFORM
+   icon C4I
+   side blue
+
+   comm ka_receiver WSF_RADIO_RCVR
+      antenna_pattern GS_18GHZ_ANT
+      frequency 28 ghz
+      internal_loss 1.5 dB
+      noise_power -130 dBm
+      detection_threshold 12 dB
+      network_name LeoSatNet
+   end_comm
+
+   processor log WSF_SCRIPT_PROCESSOR
+      update_interval 5 sec
+      on_update
+         writeln(TIME_NOW, " GS: Ground station online, tracking satellite");
+      end_on_update
+   end_processor
+
+end_platform_type

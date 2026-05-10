@@ -1,0 +1,66 @@
+# =============================================================================
+# AFSIM Template: Antenna Patterns Collection
+# Extracted from demos/sensor_demos/ (all antenna patterns across all demos)
+# =============================================================================
+# This file collects all reusable antenna pattern definitions.
+
+# === Rectangular Patterns ===
+
+antenna_pattern RECT_PATTERN_35dB_10x45
+  rectangular_pattern
+     peak_gain           35 dB
+     minimum_gain       -20 dB
+     azimuth_beamwidth   10 deg
+     elevation_beamwidth 45 deg
+  end_rectangular_pattern
+end_antenna_pattern
+
+antenna_pattern RECT_PATTERN_35dB_5x45
+  rectangular_pattern
+     peak_gain           35 dB
+     minimum_gain       -20 dB
+     azimuth_beamwidth   5 deg
+     elevation_beamwidth 45 deg
+  end_rectangular_pattern
+end_antenna_pattern
+
+# === Circular Patterns ===
+
+antenna_pattern CIRC_PATTERN_30dB_5deg
+   circular_pattern
+      beamwidth     5 deg
+      peak_gain     30 db
+end_antenna_pattern
+
+# === Uniform Patterns ===
+
+antenna_pattern UNIFORM_10dB_360
+  uniform_pattern
+     peak_gain 10 dB
+     beamwidth 360 deg
+  end_uniform_pattern
+end_antenna_pattern
+
+# === Constant (Omni) Patterns ===
+
+antenna_pattern OMNI_0dB
+   constant 0 db
+end_antenna_pattern
+
+antenna_pattern OMNI_12dB
+  constant 12 dB
+end_antenna_pattern
+
+antenna_pattern OMNI_1dB
+     constant  1 db
+end_antenna_pattern
+
+# === Sine Patterns ===
+
+antenna_pattern SINE_0dB_360x45
+  sine_pattern
+    peak_gain               0 dB
+    minimum_gain          -20 db
+    azimuth_beamwidth     360 deg
+    elevation_beamwidth    45 deg
+end_antenna_pattern

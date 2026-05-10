@@ -1,0 +1,74 @@
+# =============================================================================
+# AFSIM Template: Multiresolution Mover (Air + Space)
+# Extracted from demos/multiresolution_demos/
+#   Sources: movers/air_mover.txt, movers/space_mover.txt
+# =============================================================================
+# Multiresolution mover definitions. The fidelity parameter controls which
+# model is used (0.0 to 1.0).
+
+# --- Multiresolution Air Mover ---
+# Low fidelity: 30 sec update interval
+# High fidelity: 0.1 sec update interval
+multiresolution_mover MR_AIR_MOVER WSF_MULTIRESOLUTION_MOVER
+   model low_fidelity_mover
+      fidelity_range 0 0.5
+      mover WSF_AIR_MOVER
+         update_interval 30 sec
+      end_mover
+   end_model
+   model high_fidelity_mover
+      fidelity_range 0.5 1.0
+      mover WSF_AIR_MOVER
+         update_interval 0.1 sec
+      end_mover
+   end_model
+end_multiresolution_mover
+
+# --- Multiresolution Space Mover ---
+# Low fidelity: WSF_SPACE_MOVER (simple Keplerian)
+# High fidelity: WSF_INTEGRATING_SPACE_MOVER (with dynamics)
+multiresolution_mover MR_SPACE_MOVER WSF_MULTIRESOLUTION_MOVER
+   model low_fidelity_mover
+      fidelity_range 0.0 0.5
+      mover WSF_SPACE_MOVER
+      end_mover
+   end_model
+   model high_fidelity_mover
+      fidelity_range 0.5 1.0
+      mover WSF_INTEGRATING_SPACE_MOVER
+         integrator prince_dormand_78
+            tolerance 1.0e-11
+            error_criterion L_2
+         end_integrator
+         dynamics
+            term atmospheric_drag
+               cross_sectional_area 1.0 m^2
+               drag_coefficient 1.0e-6
+               atmosphere_model basic
+            end_term
+            term earth_monopole
+               egm96
+            end_term
+            term earth_j2
+               egm96
+            end_term
+            term sun_monopole
+            end_term
+            term moon_monopole
+               interpolation_interval 100.0 s
+            end_term
+            term jupiter_monopole
+            end_term
+         end_dynamics
+      end_mover
+   end_model
+   common
+      update_interval 5 sec
+      eccentricity 1e-3
+      semi_major_axis 6600 km
+      raan 0 deg
+      inclination 0 deg
+      true_anomaly 0 deg
+      argument_of_periapsis 0 deg
+   end_common
+end_multiresolution_mover

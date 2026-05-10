@@ -1,0 +1,257 @@
+# =============================================================================
+# engage_tracker_radar.txt — tracker platform + multi-mode fire-control radar
+# Extracted from demos/engage/
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# GEOMETRIC_SENSOR — simple omniscient detection (for debug/demo)
+# Source: demos/engage/radars/geometric_sensor.txt
+# ---------------------------------------------------------------------------
+sensor GEOMETRIC_SENSOR WSF_GEOMETRIC_SENSOR
+   frame_time 10 sec
+   reports_location
+   track_quality 0.5
+end_sensor
+
+# ---------------------------------------------------------------------------
+# LRSAM_TTR — multi-mode fire-control radar (SEARCH → ACQUIRE → TRACK)
+# Source: demos/engage/radars/lrsam_ttr.txt
+# ---------------------------------------------------------------------------
+antenna_pattern LRSAM_TTR_ANTENNA
+  sine_pattern
+    peak_gain            40 dB
+    minimum_gain         -10.0 db
+    azimuth_beamwidth    1 deg
+    elevation_beamwidth  1 deg
+  end_sine_pattern
+end_antenna_pattern
+
+sensor LRSAM_TTR WSF_RADAR_SENSOR
+   selection_mode                      multiple
+   slew_mode                           azimuth_and_elevation
+   azimuth_slew_limits                 -180 deg 180 deg
+   elevation_slew_limits               0.0 deg 80.0 deg
+
+   mode_template
+      maximum_request_count            1
+      one_m2_detect_range              150.0 nm
+      antenna_height                   4.0 m
+
+      transmitter
+         antenna_pattern               LRSAM_TTR_ANTENNA
+         power                         1000.0 kw
+         frequency                     9500 mhz
+         internal_loss                 2 db
+      end_transmitter
+
+      receiver
+         antenna_pattern               LRSAM_TTR_ANTENNA
+         bandwidth                     500.0 khz
+         noise_power                   -160 dBw
+         internal_loss                 7 dB
+      end_receiver
+
+      probability_of_false_alarm       1.0e-6
+      required_pd                      0.5
+      swerling_case                    1
+
+      reports_range
+      reports_bearing
+      reports_elevation
+      reports_velocity
+   end_mode_template
+
+   mode SEARCH
+      cue_mode azimuth
+      scan_mode                       azimuth_and_elevation
+      azimuth_scan_limits            -10 deg 10 deg
+      elevation_scan_limits            0 deg 40 deg
+      frame_time                       2.0 sec
+      hits_to_establish_track          3 5
+      hits_to_maintain_track           1 3
+      track_quality                    0.7
+   end_mode
+
+   mode ACQUIRE
+      maximum_request_count            1
+      scan_mode                        azimuth_and_elevation
+      azimuth_scan_limits              -2 deg 2 deg
+      elevation_scan_limits            -2 deg 2 deg
+      frame_time                       1.0 sec
+      hits_to_establish_track          2 4
+      hits_to_maintain_track           1 3
+      track_quality                    0.9
+   end_mode
+
+   mode TRACK
+      maximum_request_count            1
+      scan_mode                        azimuth_and_elevation
+      azimuth_scan_limits              -1 deg 1 deg
+      elevation_scan_limits            -1 deg 1 deg
+      frame_time                       1.0 sec
+      hits_to_establish_track          2 4
+      hits_to_maintain_track           1 3
+      track_quality                    1.0
+   end_mode
+
+   ignore_same_side
+end_sensor
+
+# ---------------------------------------------------------------------------
+# MAR — electronically-steered radar with genap_pattern antenna
+# Source: demos/engage/radars/mar.txt
+# ---------------------------------------------------------------------------
+antenna_pattern MAR_ANTENNA
+   genap_pattern
+      peak_gain 9 db
+      aperture_shape circular
+      azimuth_distribution cosine
+      azimuth_beamwidth 1 deg
+      azimuth_exponent 1
+      elevation_distribution cosine
+      elevation_beamwidth 1 deg
+      elevation_exponent 1
+      minimum_gain -10.0 db
+   end_antenna_pattern
+
+sensor MAR WSF_RADAR_SENSOR
+   on
+   update_interval                  .01 s
+   frame_time                       .01 s
+   hits_to_establish_track          1 32
+   hits_to_maintain_track           1 32
+   track_quality                    1.0
+   reports_range
+   reports_bearing
+   reports_elevation
+   reports_location
+   reports_velocity
+   reports_type
+   ignore_same_side
+   ignore_domain land
+   ignore_domain space
+   ignore_domain subsurface
+   ignore_domain surface
+   scan_mode azimuth_and_elevation
+   selection_mode single
+
+   transmitter
+      antenna_pattern   MAR_ANTENNA
+      power             5 kw
+      frequency         3 ghz
+      internal_loss     2 db
+      electronic_beam_steering azimuth_and_elevation
+      electronic_beam_steering_limit 90 deg
+      antenna_height 1 m
+   end_transmitter
+
+   receiver
+      antenna_pattern    MAR_ANTENNA
+      bandwidth          500.0 khz
+      noise_power        -100 dBw
+      internal_loss      7 db
+      electronic_beam_steering azimuth_and_elevation
+      electronic_beam_steering_limit 90 deg
+      antenna_height 1 m
+   end_receiver
+end_sensor
+
+# ---------------------------------------------------------------------------
+# GENERIC_TRACKER — radar tracker platform with multi-mode engagement state machine
+# Source: demos/engage/trackers/generic_tracker.txt
+# ---------------------------------------------------------------------------
+platform_type GENERIC_TRACKER WSF_PLATFORM
+   side red
+   icon Flap_Lid
+
+   sensor acq GEOMETRIC_SENSOR
+      ignore_same_side
+      on
+      internal_link tracker
+   end_sensor
+
+   sensor ttr LRSAM_TTR
+      on
+      internal_link tracker
+   end_sensor
+
+   comm comm WSF_COMM_TRANSCEIVER
+      internal_link operator
+   end_comm
+
+   processor tracker WSF_TRACK_PROCESSOR
+   end_processor
+
+   script_variables
+      string weapon_name = "weapon";
+   end_script_variables
+
+   processor operator WSF_TASK_PROCESSOR
+      show_state_transitions
+
+      evaluation_interval DETECTED 0.5 sec
+      state DETECTED
+         next_state TRY_TO_ACQUIRE
+            return StartTracking(TRACK, "DUMMY", PLATFORM.Sensor("ttr"), "SEARCH");
+         end_next_state
+      end_state
+
+      evaluation_interval TRY_TO_ACQUIRE 0.5 sec
+      state TRY_TO_ACQUIRE
+         next_state TRY_TO_TRACK
+            bool status = false;
+            if (TRACK.TrackQuality() > 0.65)
+               status = StartTracking(TRACK, "DUMMY", PLATFORM.Sensor("ttr"), "ACQUIRE");
+            return status;
+         end_next_state
+      end_state
+
+      evaluation_interval TRY_TO_TRACK 0.5 sec
+      state TRY_TO_TRACK
+         next_state TRY_TO_FIRE
+            bool status = false;
+            if (TRACK.TrackQuality() > 0.85)
+               status = StartTracking(TRACK, "DUMMY", PLATFORM.Sensor("ttr"), "TRACK");
+            return status;
+         end_next_state
+      end_state
+
+      evaluation_interval TRY_TO_FIRE 0.5 sec
+      state TRY_TO_FIRE
+         next_state FIRED
+            bool status = false;
+            if (TRACK.TrackQuality() > 0.95)
+            {
+               WsfPlatform launcher = WsfSimulation.FindPlatform("launcher");
+               status = FireAt(TRACK, "DUMMY", weapon_name, 1, launcher);
+            }
+            return status;
+         end_next_state
+      end_state
+
+      evaluation_interval FIRED 0.1 sec
+      state FIRED
+         next_state FIRED
+            return true;
+         end_next_state
+      end_state
+   end_processor
+end_platform_type
+
+# ---------------------------------------------------------------------------
+# MAR_ESAMS — multi-sector MAR deployment (4 sectors at 90° offsets)
+# Source: demos/engage/radars/mar_esams.txt
+# Use as template for deploying multiple MARs at different boresights.
+# ---------------------------------------------------------------------------
+# sensor mar1 MAR
+#    on
+#    internal_link mar_track_list
+#    one_m2_detect_range 50 km
+#    yaw 0 deg
+#    pitch 0 deg
+#    elevation_field_of_view -89.99 deg 89.99 deg
+#    electronic_beam_steering_loss_exponent_azimuth .75
+#    electronic_beam_steering_loss_exponent_elevation .75
+#    azimuth_scan_limits -45 deg 45 deg
+#    azimuth_field_of_view -45 deg 45 deg
+# end_sensor

@@ -1,0 +1,16 @@
+platform_type TANK WSF_PLATFORM
+   icon tank
+   side red
+   height 3.0 m
+   length 8.0 m
+   width 4.0 m
+   mover WSF_GROUND_MOVER end_mover
+   weapon MSL_1 RED_TANK_MISSILE
+      quantity 10
+   end_weapon
+   processor launch_processor MISSILE_LAUNCH_PROCESSOR
+      script_variables
+         WEAPON_NAME = "MSL_1";
+      end_script_variables
+   end_processor
+end_platform_type

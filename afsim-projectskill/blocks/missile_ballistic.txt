@@ -1,0 +1,133 @@
+# =============================================================================
+# TEMPLATE: Ballistic Missile Platform Type (RED_SRBM_1 example)
+# Source: demos/base_types/weapons/ssm/red_srbm_1.txt
+# =============================================================================
+# Complete ballistic missile definition including signatures, aero, guidance,
+# fuse, launch computer, and weapon wrapper.
+# 
+# REPLICATION NOTE: To create a new SRBM variant, copy this template and
+# change the names (RED_SRBM_N) and physical parameters.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Signatures (nominal / placeholder values)
+# ---------------------------------------------------------------------------
+infrared_signature RED_SRBM_1_INFRARED_SIG
+   constant 1 watts/steradian
+end_infrared_signature
+
+optical_signature  RED_SRBM_1_OPTICAL_SIG
+   constant 1 m^2
+end_optical_signature
+
+radar_signature    RED_SRBM_1_RADAR_SIG
+   constant 1 m^2
+end_radar_signature
+
+# ---------------------------------------------------------------------------
+# Weapon effects (lethality)
+# ---------------------------------------------------------------------------
+weapon_effects RED_SRBM_1_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 1000.0 m 1.0
+end_weapon_effects
+
+# ---------------------------------------------------------------------------
+# Aero model
+# ---------------------------------------------------------------------------
+aero RED_SRBM_1_AERO WSF_AERO
+   reference_area            6.5434 ft^2
+   aspect_ratio              1.0
+   cl_max                    4.5
+   zero_lift_cd              0.3
+end_aero
+
+# ---------------------------------------------------------------------------
+# Mover (single stage with specific impulse)
+# ---------------------------------------------------------------------------
+mover RED_SRBM_1_MOVER WSF_GUIDED_MOVER
+   integration_timestep      0.005 secs
+   update_interval           0.05 secs
+
+   stage 1
+      aero                   RED_SRBM_1_AERO
+      empty_mass             4500.0 lbs
+      fuel_mass              9450.0 lbs
+      thrust                 26000.0 lbf
+      specific_impulse       220.0 sec
+      thrust_duration        79.94 sec
+   end_stage
+end_mover
+
+# ---------------------------------------------------------------------------
+# Guidance computer (LIFTOFF -> PITCH_OVER -> BALLISTIC)
+# ---------------------------------------------------------------------------
+processor RED_SRBM_1_GUIDANCE WSF_GUIDANCE_COMPUTER
+   phase LIFTOFF
+      guidance_delay                   100.0 sec
+      next_phase PITCH_OVER when phase_time >= 0.5 sec
+   end_phase
+
+   phase PITCH_OVER
+      commanded_flight_path_angle      from_launch_computer
+      proportional_navigation_gain     0.0
+      velocity_pursuit_gain            0.0
+      maximum_commanded_g              1.0 g
+      next_phase BALLISTIC when on_commanded_flight_path_angle
+   end_phase
+
+   phase BALLISTIC
+      on_entry
+        TurnOff();
+      end_on_entry
+      guidance_delay                   2000.0 sec
+   end_phase
+end_processor
+
+# ---------------------------------------------------------------------------
+# Missile platform type
+# ---------------------------------------------------------------------------
+platform_type RED_SRBM_1 WSF_PLATFORM
+   icon Scud_Missile
+
+   infrared_signature RED_SRBM_1_INFRARED_SIG
+   optical_signature  RED_SRBM_1_OPTICAL_SIG
+   radar_signature    RED_SRBM_1_RADAR_SIG
+   weapon_effects     RED_SRBM_1_EFFECT
+
+   mover RED_SRBM_1_MOVER end_mover
+
+   processor guidance RED_SRBM_1_GUIDANCE end_processor
+
+   processor fuse WSF_GROUND_TARGET_FUSE
+      coast_time_on_loss_of_target     10000.0 secs
+   end_processor
+end_platform_type
+
+# ---------------------------------------------------------------------------
+# Launch computer (requires launch data table)
+# ---------------------------------------------------------------------------
+launch_computer RED_SRBM_1_LAUNCH_COMPUTER WSF_BALLISTIC_MISSILE_LAUNCH_COMPUTER
+   surface_to_surface_table weapons/ssm/red_srbm_1_launch_data.txt
+end_launch_computer
+
+ballistic_missile_launch_computer
+   target_data RED_SRBM_1
+      aero RED_SRBM_1_AERO
+      mass 4500.0 lbs
+   end_target_data
+end_ballistic_missile_launch_computer
+
+# ---------------------------------------------------------------------------
+# Weapon definition
+# ---------------------------------------------------------------------------
+weapon RED_SRBM_1 WSF_EXPLICIT_WEAPON
+   location 0.0 0.0 -4.625 m
+   launched_platform_type RED_SRBM_1
+   launch_computer RED_SRBM_1_LAUNCH_COMPUTER end_launch_computer
+   tilt  89.9 degrees
+   cue_to_predicted_intercept true
+   slew_mode azimuth
+   azimuth_slew_limits -180 deg 180 deg
+   quantity 1
+   require_loft_angle
+end_weapon

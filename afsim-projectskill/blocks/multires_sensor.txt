@@ -1,0 +1,73 @@
+# =============================================================================
+# AFSIM Template: Multiresolution Sensor
+# Extracted from demos/multiresolution_demos/
+#   Source: sensors/sensor_include.txt, sensor_demo.txt
+# =============================================================================
+# Multiresolution sensor: low-fidelity geometric, high-fidelity IRST.
+
+# --- Base Sensors (used within the multiresolution sensor) ---
+sensor GEOM_SENSOR WSF_GEOMETRIC_SENSOR
+end_sensor
+
+sensor GENERIC_IRST WSF_IRST_SENSOR
+   atmospheric_attenuation   0.05 per km
+   background_radiance       500 microwatts/cm^2/sr
+   band                      medium
+   noise_equivalent_irradiance  1.0E-12 w/cm^2
+   detection_threshold         3.0
+   azimuth_error_sigma         0.001 deg
+   elevation_error_sigma       0.001 deg
+   range_error_sigma           7.0 m
+   hits_to_establish_track     3 5
+   hits_to_maintain_track      1 4
+end_sensor
+
+# --- Multiresolution Sensor ---
+# fidelity 0.0-0.5: Geometric sensor (fast, simple)
+# fidelity 0.5-1.0: IRST sensor (detailed, physics-based)
+# Common parameters are shared between both models.
+multiresolution_sensor MR_SENSOR WSF_MULTIRESOLUTION_SENSOR
+   model low_res_sensor
+      fidelity_range 0.0 0.5
+      sensor WSF_GEOMETRIC_SENSOR
+         internal_link track_mgr
+      end_sensor
+   end_model
+
+   model high_res_sensor
+      fidelity_range 0.5 1.0
+      sensor GENERIC_IRST
+         internal_link image_proc
+      end_sensor
+   end_model
+
+   common
+      on
+      reports_range
+      frame_time               10 sec
+      azimuth_field_of_view   -45.0 deg 45.0 deg
+      elevation_field_of_view -45.0 deg 45.0 deg
+      maximum_range            50 nm
+      slew_mode                 azimuth_and_elevation
+      azimuth_slew_limits     -45 deg 45 deg
+      elevation_slew_limits   -45 deg 45 deg
+      azimuth_slew_rate         5 deg/s
+      elevation_slew_rate       5 deg/s
+      selection_mode            single
+      ignore_same_side
+   end_common
+end_multiresolution_sensor
+
+# --- Platform Type using MR Sensor ---
+# Usage: platform site MR_SENSOR_SITE
+#           multiresolution_sensor mr_sensor fidelity 1 end_multiresolution_sensor
+#        end_platform
+platform_type MR_SENSOR_SITE WSF_PLATFORM
+   processor track_mgr WSF_TRACK_PROCESSOR
+   end_processor
+   processor image_proc WSF_IMAGE_PROCESSOR
+     internal_link track_mgr
+   end_processor
+   multiresolution_sensor mr_sensor MR_SENSOR
+   end_multiresolution_sensor
+end_platform_type

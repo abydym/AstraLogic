@@ -1,0 +1,12 @@
+event_output
+   file output/scenario.evt
+   time_format h:m:s.1
+   enable WEAPON_FIRED
+   enable WEAPON_HIT
+   enable WEAPON_MISSED
+   enable WEAPON_TERMINATED
+   enable PLATFORM_ADDED
+   enable PLATFORM_DELETED
+   enable SENSOR_TRACK_INITIATED
+   enable TASK_ASSIGNED
+end_event_output

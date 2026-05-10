@@ -1,0 +1,46 @@
+# WSF_GUIDANCE_COMPUTER — Command Reference
+# Extracted from AFSIM 2.9.0 Reference Manual
+# Commands found: 42
+
+  commanded_throttle<real-value>:
+  速度追踪（VelocityPursuit）：
+  guide_to_truth<boolean-value>
+  proportional_navigation_gain<float-value>
+  velocity_pursuit_gain<float-value>
+  g_bias<float-value>
+  continuous_g_bias
+  max_commanded_g<acceleration-value>
+  guidance_delay<time-interval-value>
+  aspect_angle_for_pro_nav_switch<angle-value>
+  omit_velocity_pursuit
+  omit_proportional_navigation
+  time_between_GPS_fixes<time-duration>
+  IMU_drift_rate<speed-value>
+  pitchover_guidance
+  maximum_loft_time
+  loft_angle
+  frequency_cutoff
+  min_nav_gain
+  max_nav_gain
+  nav_gain_factor
+  nav_gain_slope_1
+  处理块：这些块包含一个或多个选择块，用于定义要处理的消息。它们还包括指定操作
+  默认处理块：这是一个可选块，用于定义未被任何处理块选择的消息的操作。
+  默认路由块：这是一个可选块，指定没有任何路由命令的消息的路由。
+  队列管理器配置：用于配置队列管理器的命令，该管理器负责处理具有非零延迟时间的
+  忽略消息：如果消息处理指定ignore_message，则忽略消息并停止处理。
+  队列消息：如果指定了非零delay_time，则根据queuing_method和number_of_servers
+  路由消息：一旦完成任何必要的延迟（如果未选择延迟则立即），根据需要路由消息：
+  queuing_method[first_in_first_out|last_in_first_out|none]
+  number_of_servers[<integer-reference>|infinite]
+  type<message-type>
+  subtype<message-subtype>
+  system_name<system-name>
+  sendercommander|peer|subordinate|self
+  script…scriptcommands…end_script
+  delay_time<random-time-reference>
+  ignore_message
+  script…scriptcommands…end_script
+  report_to[commander|peers|subordinates]via<xmtr-name>[to<rcvr-name>]
+  external_link[commander|peers|subordinates]via<xmtr-name>[to<rcvr-name>]
+  report_tocommand_chain<cmd-chain-name>[commander|peers|subordinates]via

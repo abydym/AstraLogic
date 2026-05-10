@@ -1,0 +1,83 @@
+# =============================================================================
+# AFSIM Template: Coherent Sensor Processor
+# Extracted from demos/sensor_demos/
+#   Source: coherent_sensor_demo.txt
+# =============================================================================
+# This template demonstrates coherent sensor processing (WSF_COHERENT_SENSOR_PROCESSOR)
+# for fusing multiple radar beams/faces.
+
+# --- Platform Type: Multi-Sensor Site with Coherent Processing ---
+platform_type EW_RADAR_SITE_COHERENT WSF_PLATFORM
+   icon Ground_Radar
+   mover WSF_GROUND_MOVER end_mover
+
+   add processor track_manager WSF_TRACK_PROCESSOR
+      purge_interval 20 sec
+   end_processor
+
+   sensor ew_radar_1 EW_RADAR_COHERENT
+      processor track_manager
+      ignore_same_side
+   end_sensor
+
+   sensor ew_radar_2 EW_RADAR_COHERENT
+      processor track_manager
+      ignore_same_side
+   end_sensor
+
+   processor multi_sensor_detector WSF_COHERENT_SENSOR_PROCESSOR
+      debug
+      debug_level 2
+      update_interval 10 secs
+      use_target_result true
+      result_processing_type SNR_BASED
+      fusion_method  weighted_average
+
+      processor track_manager
+
+      sensors
+         sensor ew_radar_1
+         sensor ew_radar_2
+      end_sensors
+   end_processor
+end_platform_type
+
+# --- Multi-beam Radar (for coherent processing) ---
+sensor EW_RADAR_COHERENT WSF_RADAR_SENSOR
+   frame_time                      10.0 sec
+
+   beam 1
+      one_m2_detect_range          100 nm
+      maximum_range                120 nm
+      antenna_height               6 m
+      scan_mode                    azimuth
+      azimuth_scan_limits         -180 deg 180 deg
+
+      transmitter
+         antenna_pattern           EW_RADAR_ANTENNA
+         beam_tilt                  10 deg
+         power                     750 kw
+         pulse_width                50 usec
+         pulse_repetition_interval 750 usec
+         frequency                 920 mhz
+      end_transmitter
+
+      receiver
+         antenna_pattern           EW_RADAR_ANTENNA
+         bandwidth                 2.0 mhz
+      end_receiver
+   end_beam
+
+   beam 2
+      transmitter
+         frequency 925 mhz
+      end_transmitter
+   end_beam
+
+   required_pd                     0.5
+   hits_to_establish_track         3 5
+   hits_to_maintain_track          1 3
+   reports_range
+   reports_bearing
+   reports_iff
+end_sensor

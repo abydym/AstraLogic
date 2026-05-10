@@ -1,0 +1,109 @@
+# =============================================================================
+# AFSIM Template: Processor Definitions Collection
+# Extracted from demos/sensor_demos/ and demos/multiresolution_demos/
+# =============================================================================
+# Reusable processor definitions beyond standard WSF processors.
+
+# --- Zone-Based GPS Status Processor ---
+# Uses Zone containment to toggle GPS availability.
+processor ZONE_BASED_GPS_STATUS_PROCESSOR WSF_SCRIPT_PROCESSOR
+   update_interval 5 sec
+
+   on_update
+      if (PLATFORM.GPS_Status() < 100)
+      {
+         if (PLATFORM.WithinZone("no_gps"))
+         {
+            PLATFORM.SetGPS_Status(-1);   // GPS unavailable
+         }
+         else
+         {
+            PLATFORM.SetGPS_Status(1);    // GPS available
+         }
+      }
+   end_on_update
+end_processor
+
+# --- TRIMSIM Processor (TDOA localization) ---
+processor TRIMSIM_PROCESSOR WSF_TRIMSIM_PROCESSOR
+   debug
+   debug_level 2
+   minimum_detections 2
+end_processor
+
+# --- Direction Finder Processor ---
+# Extracted from passive_detector_df_demo.txt
+processor DIRECTION_FINDER_PROCESSOR WSF_DIRECTION_FINDER_PROCESSOR
+   debug
+   processor               track_processor
+   collect_replacement_interval  30 sec
+   maximum_time_difference 10 sec
+   use_truth_altitude      true
+   filter_bypass
+   test true
+end_processor
+
+# --- Message Receiver Processor ---
+# Simple processor that logs received messages.
+# Requires script variable: commName (string).
+processor MESSAGE_RECEIVER WSF_SCRIPT_PROCESSOR
+   on_message
+      default
+      script
+         writeln(PLATFORM.Name(), " received from ", MESSAGE.Originator(),
+                 " with comm type ", PLATFORM.Comm(commName).Type(),
+                 " at time ", TIME_NOW, " with tag ", MESSAGE.DataTag());
+      end_script
+   end_on_message
+end_processor
+
+# --- Low-Fidelity Task Processor ---
+processor LOW_FIDELITY_TASK_PROCESSOR WSF_TASK_PROCESSOR
+   evaluation_interval MOVING 10.0 sec
+   state MOVING
+      on_entry
+         PLATFORM.GoToSpeed(250.0);
+         PLATFORM.GoToLocation(0.3, 0.0, 6096.0);
+         writeln("Using low-fidelity task processor.");
+      end_on_entry
+   end_state
+end_processor
+
+# --- High-Fidelity Task Processor ---
+processor HIGH_FIDELITY_TASK_PROCESSOR WSF_TASK_PROCESSOR
+   evaluation_interval SEARCHING 1.0 sec
+   evaluation_interval MOVING 0.5 sec
+
+   script_variables
+      WsfGeoPoint targetPoint = WsfGeoPoint();
+   end_script_variables
+
+   state SEARCHING
+      next_state MOVING
+         if (TRACK) {
+            targetPoint = TRACK.CurrentLocation();
+            writeln("Found target at ", targetPoint);
+            return true;
+         } else {
+            return false;
+         }
+      end_next_state
+   end_state
+
+   state MOVING
+      on_entry
+         PLATFORM.GoToSpeed(250.0, 1.0, true);
+         PLATFORM.GoToLocation(targetPoint);
+         writeln("Chasing target to ", targetPoint);
+      end_on_entry
+      next_state SEARCHING
+         if (PLATFORM.Location().SlantRangeTo(targetPoint) < 200.0){
+            writeln("Caught target!");
+            PLATFORM.SetVelocityNED(0,0,0);
+            return true;
+         } else {
+            return false;
+         }
+      end_next_state
+   end_state
+end_processor

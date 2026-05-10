@@ -1,0 +1,90 @@
+# 审计报告 #4 — processor + guidance + communication 命令
+
+## script processor 命令
+✅ WSF_SCRIPT_PROCESSOR
+✅ script_variables
+✅ update_interval
+✅ on_update
+✅ on_initialize
+✅ end_on_update
+✅ end_on_initialize
+
+## 脚本方法
+✅ WsfSimulation.FindPlatform
+❌ PLATFORM.Weapon (仅在 WSF_WEAPON_FUSE 文档中出现 PLATFORM.WeaponEngagement())
+✅ PLATFORM.GroundRangeTo
+✅ PLATFORM.SlantRangeTo
+✅ PLATFORM.MasterTrackList
+✅ target.MakeTrack
+✅ wpn.IsValid (作为 IsValid() 通用方法存在)
+✅ wpn.CueToTarget (作为 weapon.CueToTarget(TRACK) 存在)
+❌ wpn.Fire
+❌ wpn.QuantityRemaining
+✅ sensor.TurnOn
+✅ sensor.TurnOff
+✅ writeln
+
+## guidance computer 命令
+✅ WSF_GUIDANCE_COMPUTER
+✅ phase
+✅ next_phase
+✅ guidance_delay
+✅ commanded_flight_path_angle
+✅ proportional_navigation_gain
+✅ velocity_pursuit_gain
+✅ g_bias
+✅ maximum_commanded_g
+✅ show_graphics (未在 GUIDANCE_COMPUTER 文档中作为独立命令列出，但作为 BALLISTIC_MISSILE_LAUNCH_COMPUTER 命令存在)
+✅ end_phase
+✅ end_state
+
+## task processor 命令
+✅ WSF_TASK_PROCESSOR
+✅ state
+✅ next_state
+✅ evaluation_interval
+✅ operating_level
+✅ StartTracking
+✅ FireAt
+✅ CancelTask
+
+## launch computer 命令
+✅ WSF_BALLISTIC_MISSILE_LAUNCH_COMPUTER
+✅ show_graphics
+✅ surface_to_air_table
+✅ maximum_time_of_flight
+✅ maximum_intercept_angle
+
+## communication 命令
+✅ WSF_RADIO_XMTR
+✅ WSF_RADIO_RCVR
+✅ WSF_RADIO_TRANSCEIVER
+✅ WSF_COMM_TRANSCEIVER
+✅ antenna_pattern
+❌ elevation_mask
+✅ network_name
+✅ transfer_rate
+✅ internal_link
+✅ external_link
+✅ WSF_COMM_NETWORK_GENERIC
+✅ comm_link_list
+✅ link
+
+## event 输出命令
+✅ event_output
+✅ csv_event_output
+✅ event_pipe
+❌ use_preset
+✅ enable
+✅ disable
+✅ file
+
+## 总结
+总计命令数: 59
+✅ 找到: 54
+❌ 未找到: 5
+- PLATFORM.Weapon (PLATFORM.WeaponEngagement() 存在, 但独立方法未找到)
+- wpn.Fire
+- wpn.QuantityRemaining
+- elevation_mask
+- use_preset

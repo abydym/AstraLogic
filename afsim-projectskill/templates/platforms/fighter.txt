@@ -1,0 +1,56 @@
+# Air-to-Air Fighter Template (from demos/shooter/)
+# Fighter with radar + AAMs + tactics processor
+
+include_once weapons/aam/aa_mrm.txt
+include_once platforms/aa_tactics.txt
+include_once sensors/radar/generic_file_control_radar.txt
+
+processor DATA_MGR WSF_TRACK_PROCESSOR
+   purge_interval 60 sec
+end_processor
+
+processor TASK_MGR AA_TACTICS
+   on_initialize
+      SENSOR_NAME = "radar";
+      SENSOR_TRACK_MODE = "default";
+      WEAPON_NAME = "aa_mrm";
+   end_on_initialize
+end_processor
+
+platform_type FIGHTER_AIRCRAFT WSF_PLATFORM
+   icon F-18
+   height 3.0 m
+   length 15.0 m
+   width 10.0 m
+   empty_mass 10000 kg
+   mover WSF_AIR_MOVER
+      maximum_speed 500 kts
+      minimum_speed 100 kts
+      maximum_altitude 15000 m
+   end_mover
+
+   weapon aa_mrm AA_MRM
+      quantity 8
+      internal_link task_mgr
+      internal_link data_mgr
+   end_weapon
+
+   comm cmd_net WSF_COMM_TRANSCEIVER
+      network_name <local:slave>
+      internal_link data_mgr
+      internal_link task_mgr
+   end_comm
+
+   processor data_mgr DATA_MGR end_processor
+   processor task_mgr TASK_MGR
+      operating_level ENGAGE 1
+      update_interval 1 secs
+   end_processor
+
+   sensor radar GENERIC_FIRE_CONTROL_RADAR
+      off
+      internal_link data_mgr
+      internal_link task_mgr
+      ignore_same_side
+   end_sensor
+end_platform_type

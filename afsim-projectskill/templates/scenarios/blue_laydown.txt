@@ -1,0 +1,4 @@
+platform Blue_Base BUILDING
+   side blue
+   position 34.05n 118.05w
+end_platform

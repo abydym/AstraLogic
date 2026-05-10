@@ -1,0 +1,140 @@
+# =============================================================================
+# AFSIM Template: EW Radar Sensor
+# Extracted from demos/sensor_demos/
+#   Sources: ew_radar_demo.txt, esm_demo.txt, coherent_sensor_demo.txt
+# =============================================================================
+# This template provides reusable EW radar sensor and antenna pattern definitions.
+
+# --- Antenna Pattern (Rectangular) ---
+antenna_pattern EW_RADAR_ANTENNA
+  rectangular_pattern
+     peak_gain           35 dB
+     minimum_gain       -20 dB
+     azimuth_beamwidth   5 deg
+     elevation_beamwidth 45 deg
+  end_rectangular_pattern
+end_antenna_pattern
+
+# Alternatively (wider azimuth beam):
+antenna_pattern EW_RADAR_ANTENNA_WIDE
+  rectangular_pattern
+     peak_gain           35 dB
+     minimum_gain       -20 dB
+     azimuth_beamwidth   10 deg
+     elevation_beamwidth 45 deg
+  end_rectangular_pattern
+end_antenna_pattern
+
+# --- Auxiliary Antenna (Uniform) ---
+antenna_pattern AUX_ANTENNA
+  uniform_pattern
+     peak_gain 10 dB
+     beamwidth 360 deg
+  end_uniform_pattern
+end_antenna_pattern
+
+# --- EW Radar Sensor ---
+# Simple EW radar sensor definition.
+# Key parameters: frequency, power, pulse characteristics, antenna pattern,
+# scan mode, detection/track thresholds.
+sensor EW_RADAR WSF_RADAR_SENSOR
+   maximum_range                 120 nm
+   antenna_height                6.0 m
+   frame_time                    10.0 sec
+   scan_mode                     azimuth
+   azimuth_scan_limits           -180 deg 180 deg
+
+   transmitter
+      antenna_pattern            EW_RADAR_ANTENNA
+      beam_tilt                  10.0 deg
+      power                      100.0 w
+      frequency                  1000 mhz
+      pulse_width                25 usec
+      pulse_repetition_interval  1250 usec
+      internal_loss              2 db
+   end_transmitter
+
+   receiver
+      beam_tilt                  10.0 deg
+      bandwidth                  2.0 mhz
+      noise_power                -160 dBw
+      internal_loss              7 dB
+   end_receiver
+
+   # Swerling detector
+   swerling_case                 1
+   probability_of_false_alarm    1.0e-6
+   required_pd                   0.5
+   number_of_pulses_integrated   16
+
+   hits_to_establish_track       3 5   # 3 of last 5 scans to establish track
+   hits_to_maintain_track        1 3   # 1 of last 3 scans to maintain  track
+
+   reports_range
+   reports_bearing
+   reports_signal_to_noise
+end_sensor
+
+# --- EW Radar (ESM Demo variant - with one_m2_detect_range) ---
+sensor EW_RADAR_ESM_DEMO WSF_RADAR_SENSOR
+   frame_time                1  sec
+   location                  0.0 0.0 -30 m
+   scan_mode                 azimuth
+   azimuth_scan_limits       -180 deg 180 deg
+   elevation_field_of_view  -2.5 deg 42.5 deg
+   minimum_range        0 nm
+   maximum_range      400 km
+   one_m2_detect_range 225 km
+
+   transmitter
+      power           750 kw
+      frequency       900 mhz
+      bandwidth       0.1 mhz
+      pulse_width                  10  usec
+      pulse_repetition_interval    750 usec
+      antenna_pattern EW_RADAR_ANTENNA
+      antenna_tilt     10 deg
+   end_transmitter
+   receiver
+      antenna_pattern EW_RADAR_ANTENNA
+      antenna_tilt     10 deg
+      frequency       900 mhz
+      bandwidth         1 mhz
+   end_receiver
+
+   hits_to_establish_track   3 5
+   hits_to_maintain_track    1 4
+   reports_location
+   reports_velocity
+   reports_signal_to_noise
+   reports_range
+   reports_bearing
+   reports_elevation
+end_sensor
+
+# --- Radar Signature (Fighter) ---
+radar_signature FIGHTER_RADAR_SIGNATURE
+   constant 10 m^2
+end_radar_signature
+
+# --- Platform Type: EW Radar Site ---
+platform_type EW_RADAR_SITE WSF_PLATFORM
+   icon Ground_Radar
+   mover WSF_GROUND_MOVER end_mover
+   sensor ew_radar EW_RADAR
+      processor track_manager
+      ignore_same_side
+   end_sensor
+   processor track_manager WSF_TRACK_PROCESSOR
+   end_processor
+end_platform_type
+
+# --- Platform Type: Striker (with ESM) ---
+platform_type STRIKER_PLATFORM WSF_PLATFORM
+   icon F-18E
+   side blue
+   radar_signature FIGHTER_RADAR_SIGNATURE
+   mover WSF_AIR_MOVER end_mover
+   processor track_manager WSF_TRACK_PROCESSOR
+   end_processor
+end_platform_type

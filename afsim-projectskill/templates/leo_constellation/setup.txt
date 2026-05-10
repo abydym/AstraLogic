@@ -1,0 +1,4 @@
+file_path .
+include_once platforms/leo_satellite.txt
+include_once platforms/gateway_station.txt
+include_once platforms/mobile_terminal.txt

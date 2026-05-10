@@ -1,0 +1,213 @@
+# =============================================================================
+# AFSIM Template: Bistatic/Multistatic Radar & Passive Detector
+# Extracted from demos/sensor_demos/
+#   Sources: bistatic_demo.txt, passive_detector_demo.txt,
+#            passive_detector_df_demo.txt
+# =============================================================================
+# This template provides bistatic radar configuration: separate transmit-only
+# and receive-only sensors, antenna patterns, platform types, and scripts.
+
+# --- Bistatic Transmit Antenna ---
+antenna_pattern BISTATIC_TX_ANTENNA
+  constant 0 db
+end_antenna_pattern
+
+# --- Bistatic Receive Antenna ---
+antenna_pattern BISTATIC_RX_ANTENNA
+  constant 12 dB
+end_antenna_pattern
+
+# --- Bistatic Sine Antenna (TX) ---
+antenna_pattern BISTATIC_TX_ANTENNA_SINE
+  sine_pattern
+    peak_gain               0 dB
+    minimum_gain          -20 db
+    azimuth_beamwidth     360 deg
+    elevation_beamwidth    45 deg
+end_antenna_pattern
+
+# --- Bistatic Sine Antenna (RX) ---
+antenna_pattern BISTATIC_RX_ANTENNA_SINE
+  sine_pattern
+    peak_gain               0 dB
+    minimum_gain          -20 db
+    azimuth_beamwidth     360 deg
+    elevation_beamwidth    45 deg
+end_antenna_pattern
+
+# --- Transmit-Only Sensor ---
+sensor BISTATIC_SENSOR_XMTR WSF_RADAR_SENSOR
+   transmit_only
+   frame_time                10.0 sec
+   transmitter
+      antenna_pattern       BISTATIC_TX_ANTENNA
+      antenna_height        90 m
+      power                    50 kw
+      frequency               100 mhz
+      bandwidth               200 khz
+      internal_loss        8 db
+   end_transmitter
+end_sensor
+
+# --- Receive-Only Sensor (with detection) ---
+sensor BISTATIC_SENSOR_RCVR WSF_RADAR_SENSOR
+   receive_only
+   frame_time            1.0 sec
+
+   receiver
+      antenna_pattern    BISTATIC_RX_ANTENNA
+      antenna_height     9 m
+      frequency          100 mhz
+      bandwidth          200 khz
+      noise_figure         7 db
+      check_transmitter_masking false
+   end_receiver
+
+   detection_threshold    15 db
+   integration_gain 1e5 absolute
+   reports_range
+   reports_bearing
+end_sensor
+
+# --- Receive-Only with Error Model (DF variant) ---
+sensor BISTATIC_SENSOR_RCVR_DF WSF_RADAR_SENSOR
+   receive_only
+   maximum_range          120 nm
+   antenna_height          0.0 m
+   frame_time              10.0 sec
+
+   receiver
+      antenna_pattern          BISTATIC_RX_ANTENNA_SINE
+      beam_tilt                  0 deg
+      frequency                 525 mhz
+      bandwidth                950.0 mhz
+      noise_power              -175 dbm
+      instantaneous_bandwidth    10 mhz
+      check_transmitter_masking false
+   end_receiver
+
+   error_model_parameters
+      azimuth_beamwidth      90 deg
+      elevation_beamwidth    90 deg
+      receiver_bandwidth     50 mhz
+   end_error_model_parameters
+
+   detection_threshold 3 db
+   reports_bearing
+end_sensor
+
+# --- Receive-Only with Measurement Errors ---
+sensor BISTATIC_SENSOR_RCVR_MEAS WSF_RADAR_SENSOR
+   receive_only
+   maximum_range                  120 nm
+   antenna_height                 0.0 m
+   frame_time                     10.0 sec
+
+   receiver
+      antenna_pattern          BISTATIC_RX_ANTENNA_SINE
+      beam_tilt                  0 deg
+      frequency                 525 mhz
+      bandwidth                950.0 mhz
+      noise_power              -175 dbm
+      instantaneous_bandwidth    10 mhz
+      check_transmitter_masking false
+   end_receiver
+
+   compute_measurement_errors true
+   detection_threshold 3 db
+   reports_range
+   reports_bearing
+end_sensor
+
+# --- Bistatic Radar Signature ---
+radar_signature RADAR_SIGNATURE
+  use_bisector_for_bistatic true
+  constant 5 m^2
+end_radar_signature
+
+# --- Jet Platform (Bistatic target) ---
+platform_type JET WSF_PLATFORM
+   radar_signature RADAR_SIGNATURE
+   mover WSF_AIR_MOVER
+   end_mover
+end_platform_type
+
+# --- Platform Type: C4I with Datalink ---
+platform_type C4I_PLATFORM WSF_PLATFORM
+   comm datalink WSF_COMM_TRANSCEIVER
+      transfer_rate      100 mbits/sec
+      network_name <local:slave>
+      internal_link data_mgr
+   end_comm
+   processor data_mgr WSF_TRACK_PROCESSOR
+      report_to commander via datalink
+   end_processor
+end_platform_type
+
+# --- Platform Type: Receiver with Bistatic Sensor ---
+platform_type RCVR_PLATFORM WSF_PLATFORM
+   sensor rcvr BISTATIC_SENSOR_RCVR
+      on
+      internal_link data_mgr
+      ignore_same_side
+   end_sensor
+   comm datalink WSF_COMM_TRANSCEIVER
+      transfer_rate      100 mbits/sec
+      network_name <local:slave>
+      internal_link data_mgr
+   end_comm
+   processor data_mgr WSF_TRACK_PROCESSOR
+      report_to commander via datalink
+   end_processor
+end_platform_type
+
+# --- DF Platform Type (Direction Finder) ---
+platform_type C4I_PLATFORM_DF WSF_PLATFORM
+   comm datalink WSF_COMM_TRANSCEIVER
+      transfer_rate      100 mbits/sec
+      network_name <local:master>
+      internal_link direction_finder
+   end_comm
+   processor direction_finder WSF_DIRECTION_FINDER_PROCESSOR
+      debug
+      processor               track_processor
+      collect_replacement_interval  30 sec
+      maximum_time_difference 10 sec
+      use_truth_altitude      true
+      filter_bypass
+      test true
+   end_processor
+   processor track_processor WSF_TRACK_PROCESSOR
+   end_processor
+end_platform_type
+
+# --- Receiver Platform (DF variant) ---
+platform_type RCVR_PLATFORM_DF WSF_PLATFORM
+   sensor rcvr WSF_RADAR_SENSOR
+      on
+      internal_link data_manager
+      ignore_same_side
+   end_sensor
+   comm datalink WSF_COMM_TRANSCEIVER
+      transfer_rate      100 mbits/sec
+      network_name <local:slave>
+   end_comm
+   processor data_manager WSF_TRACK_PROCESSOR
+      report_to commander via datalink
+      raw_track_reporting on
+   end_processor
+end_platform_type
+
+# --- Sample Observer Script (bistatic diagnostics) ---
+# Usage: observer enable SENSOR_DETECTION_ATTEMPT end_observer
+# script void SensorDetectionAttempt(WsfPlatform aPlatform,
+#                                    WsfSensor aSensor,
+#                                    WsfPlatform aTarget,
+#                                    WsfSensorInteraction aResult)
+#    if (aResult.IsValid() && aResult.Detected())
+#    {
+#       writeln("* RcvrToTgtRange = ", aResult.RcvrToTargetRange()/1000., " km");
+#       writeln("* XmtrToTgtRange = ", aResult.XmtrToTargetRange()/1000., " km");
+#       writeln("* SNR = ", aResult.SignalToInterference(), " dB");
+#    }
+# end_script

@@ -1,0 +1,64 @@
+# =============================================================================
+# AFSIM Template: Electronic Warfare / Jamming
+# Extracted from demos/sensor_demos/
+#   Sources: bistatic_sp_false_target_jamming_demo.txt,
+#            bistatic_sp_noise_jamming_demo.txt,
+#            bistatic_support_false_target_jamming_demo.txt,
+#            bistatic_support_noise_jamming_demo.txt
+# =============================================================================
+# This template provides EW jamming definitions: noise and false target jamming.
+
+# --- Jammer Antenna ---
+antenna_pattern JAMMER_ANTENNA
+     constant  1 db
+end_antenna_pattern
+
+# --- False Target Jamming Electronic Attack ---
+electronic_warfare JAMMER_EA WSF_ELECTRONIC_ATTACK
+   technique false_target_jamming WSF_EA_TECHNIQUE
+      mitigation_class_name false_target_jamming
+      effect ft_effect WSF_FALSE_TARGET_EFFECT
+         number_of_false_targets 1
+      end_effect
+   end_technique
+end_electronic_warfare
+
+# --- RF Jammer (False Target) ---
+weapon JAMMER_FALSE_TARGET WSF_RF_JAMMER
+   transmitter
+      antenna_pattern JAMMER_ANTENNA
+      power           1 w
+      frequency       100 mhz
+      bandwidth       200 khz
+      pulse_repetition_interval 100 usec
+      internal_loss   11 db
+   end_transmitter
+   electronic_attack JAMMER_EA
+      technique false_target_jamming
+         default_on
+      end_technique
+   end_electronic_attack
+end_weapon
+
+# --- RF Jammer (Noise) ---
+weapon JAMMER_NOISE WSF_RF_JAMMER
+   transmitter
+      antenna_pattern JAMMER_ANTENNA
+      power           1 w
+      frequency       100 mhz
+      bandwidth       20 mhz
+      internal_loss   11 db
+   end_transmitter
+end_weapon
+
+# --- Sample Jamming Debug Observer Script ---
+# Usage: observer enable JAMMING_ATTEMPT end_observer
+# script void JammingAttempt(WsfPlatform aXmtr, WsfPlatform aRcvr,
+#                            WsfEM_Interaction aResult)
+#    if (aResult.IsValid()) {
+#       writeln("* RcvrToXmtrRange = ", aResult.RcvrToXmtrRange()/1000., " km");
+#       writeln("* XmtrToRcvrRange = ", aResult.XmtrToRcvrRange()/1000., " km");
+#       writeln("* NoiseJammerPower = ", aResult.NoiseJammerPower(), " dBW");
+#       writeln("* JNR = ", aResult.CoherentJammerPower() - aResult.RcvrNoise(), " dB");
+#    }
+# end_script

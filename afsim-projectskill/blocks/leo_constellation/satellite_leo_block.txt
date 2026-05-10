@@ -1,0 +1,132 @@
+# =============================================================================
+# Block: LEO Constellation Satellite (520km, 50deg)
+# Include this in platforms/leo_satellite.txt
+# =============================================================================
+
+antenna_pattern ISL_60GHZ_ANT
+  uniform_pattern
+    peak_gain 22 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+antenna_pattern SAT_KA_DOWNLINK_ANT
+  uniform_pattern
+    peak_gain 24 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+antenna_pattern SAT_KA_UPLINK_ANT
+  uniform_pattern
+    peak_gain 24 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+platform_type LEO_SAT WSF_PLATFORM
+   icon Satellite
+   side blue
+   height 3 m  length 5 m  width 5 m
+
+   mover WSF_AIR_MOVER
+      maximum_speed 18000 kts  minimum_speed 15000 kts
+      maximum_altitude 600000 m  minimum_altitude 400000 m
+   end_mover
+
+   # V-band 60GHz ISL
+   comm isl_xcvr WSF_RADIO_TRANSCEIVER
+      antenna_pattern ISL_60GHZ_ANT
+      frequency 60 ghz
+      power 20 W
+      internal_loss 1.0 dB
+      transfer_rate 20 mbit/s
+      network_name LeoSatNet
+   end_comm
+
+   # Ka-band 27.5GHz downlink
+   comm ka_downlink WSF_RADIO_XMTR
+      antenna_pattern SAT_KA_DOWNLINK_ANT
+      frequency 27.5 ghz
+      power 25 W
+      internal_loss 0.5 dB
+      transfer_rate 8 mbit/s
+      network_name GroundFeederNet
+   end_comm
+
+   # Ka-band 17.5GHz uplink
+   comm ka_uplink WSF_RADIO_RCVR
+      antenna_pattern SAT_KA_UPLINK_ANT
+      frequency 17.5 ghz
+      internal_loss 1.0 dB
+      noise_power -125 dBm
+      detection_threshold 10 dB
+      network_name GroundFeederNet
+   end_comm
+
+   processor link_budget WSF_SCRIPT_PROCESSOR
+      update_interval 1 sec
+      script_variables
+         int sat_id = 0;
+      end_script_variables
+      on_init
+         # Extract satellite number from name (Leo_Sat_1 -> 1)
+         sat_id = PLATFORM.Name().substr(9);
+      end_on_init
+      on_update
+         writeln(TIME_NOW, " SAT", sat_id, " ONLINE");
+
+         # Check ISL to neighbors
+         int prev_id = (sat_id == 1) ? 6 : sat_id - 1;
+         int next_id = (sat_id == 6) ? 1 : sat_id + 1;
+         WsfPlatform prev = WsfSimulation.FindPlatform("Leo_Sat_" + prev_id);
+         WsfPlatform next = WsfSimulation.FindPlatform("Leo_Sat_" + next_id);
+
+         if (prev.IsValid())
+         {
+            double r = PLATFORM.SlantRangeTo(prev);
+            double d = r / 299792.458;
+            writeln(TIME_NOW, " RNG_ISL_PREV=", r, " DELAY_ISL_PREV=", d, "ms LINK_ISL_PREV=UP");
+         }
+         if (next.IsValid())
+         {
+            double r = PLATFORM.SlantRangeTo(next);
+            double d = r / 299792.458;
+            writeln(TIME_NOW, " RNG_ISL_NEXT=", r, " DELAY_ISL_NEXT=", d, "ms LINK_ISL_NEXT=UP");
+         }
+
+         # Check ground links
+         string ground_names[] = { "Gateway_A", "Gateway_B", "Mobile_Terminal" };
+         for (int i = 0; i < 3; i++)
+         {
+            WsfPlatform gs = WsfSimulation.FindPlatform(ground_names[i]);
+            if (!gs.IsValid()) continue;
+
+            double slant = PLATFORM.SlantRangeTo(gs);
+            double ground = PLATFORM.GroundRangeTo(gs);
+            double elev = (ground < 100) ? 90.0 : 57.2958 * atan2(520000.0, max(ground, 1.0));
+            double delay_ms = slant / 299792.458;
+            double min_elev = (i == 2) ? 7.0 : 6.0;
+            string link = (elev >= min_elev) ? "UP" : "DOWN";
+
+            writeln(TIME_NOW, " SAT", sat_id, "_RNG=", slant, " GRND=", ground,
+                    " ELEV=", elev, " DELAY=", delay_ms, "ms LINK=", link,
+                    " GS=", ground_names[i]);
+         }
+      end_on_update
+   end_processor
+
+   processor handover WSF_SCRIPT_PROCESSOR
+      update_interval 1 sec
+      on_update
+         WsfPlatform mobile = WsfSimulation.FindPlatform("Mobile_Terminal");
+         if (!mobile.IsValid()) return;
+         double slant = PLATFORM.SlantRangeTo(mobile);
+         double ground = PLATFORM.GroundRangeTo(mobile);
+         double elev = (ground < 100) ? 90.0 : 57.2958 * atan2(520000.0, max(ground, 1.0));
+         if (elev >= 7.0)
+         {
+            writeln(TIME_NOW, " SAT_CANDIDATE SAT=", PLATFORM.Name(),
+                    " RNG=", slant, " ELEV=", elev);
+         }
+      end_on_update
+   end_processor
+
+end_platform_type

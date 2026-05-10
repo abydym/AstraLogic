@@ -1,0 +1,222 @@
+# =============================================================================
+# LEO Constellation Deployment
+# 6 satellites (520km, 50deg, same orbital plane, 60deg phase spacing)
+# Full orbit routes (~5693s = 94.9 min, 15 waypoints per sat)
+# =============================================================================
+
+# --- Sat 1: starts at equator 100E ---
+platform Leo_Sat_1 LEO_SAT
+   side blue
+   position 0:00:00.00n 100:00:00.00e altitude 520000 m
+   heading 50 deg
+   edit mover
+      route
+         position 0:00:00.00n 100:00:00.00e altitude 520000 m speed 16000 kts
+         position 15:00:00.00n 105:00:00.00e altitude 520000 m speed 16000 kts
+         position 30:00:00.00n 112:00:00.00e altitude 520000 m speed 16000 kts
+         position 47:00:00.00n 125:00:00.00e altitude 520000 m speed 16000 kts
+         position 50:00:00.00n 140:00:00.00e altitude 520000 m speed 16000 kts
+         position 40:00:00.00n 155:00:00.00e altitude 520000 m speed 16000 kts
+         position 20:00:00.00n 165:00:00.00e altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 170:00:00.00e altitude 520000 m speed 16000 kts
+         position 15:00:00.00s 175:00:00.00e altitude 520000 m speed 16000 kts
+         position 30:00:00.00s 175:00:00.00w altitude 520000 m speed 16000 kts
+         position 45:00:00.00s 160:00:00.00w altitude 520000 m speed 16000 kts
+         position 50:00:00.00s 140:00:00.00w altitude 520000 m speed 16000 kts
+         position 40:00:00.00s 120:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00s 105:00:00.00w altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 100:00:00.00w altitude 520000 m speed 16000 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Sat 2: starts 60deg ahead at ~40N 85E ---
+platform Leo_Sat_2 LEO_SAT
+   side blue
+   position 40:00:00.00n 85:00:00.00e altitude 520000 m
+   heading 50 deg
+   edit mover
+      route
+         position 40:00:00.00n 85:00:00.00e altitude 520000 m speed 16000 kts
+         position 47:00:00.00n 95:00:00.00e altitude 520000 m speed 16000 kts
+         position 50:00:00.00n 110:00:00.00e altitude 520000 m speed 16000 kts
+         position 40:00:00.00n 125:00:00.00e altitude 520000 m speed 16000 kts
+         position 20:00:00.00n 135:00:00.00e altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 140:00:00.00e altitude 520000 m speed 16000 kts
+         position 15:00:00.00s 145:00:00.00e altitude 520000 m speed 16000 kts
+         position 30:00:00.00s 155:00:00.00e altitude 520000 m speed 16000 kts
+         position 45:00:00.00s 170:00:00.00e altitude 520000 m speed 16000 kts
+         position 50:00:00.00s 170:00:00.00w altitude 520000 m speed 16000 kts
+         position 40:00:00.00s 150:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00s 135:00:00.00w altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 130:00:00.00w altitude 520000 m speed 16000 kts
+         position 15:00:00.00n 125:00:00.00w altitude 520000 m speed 16000 kts
+         position 30:00:00.00n 118:00:00.00w altitude 520000 m speed 16000 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Sat 3: starts 60deg ahead at 50N 140E ---
+platform Leo_Sat_3 LEO_SAT
+   side blue
+   position 50:00:00.00n 140:00:00.00e altitude 520000 m
+   heading 50 deg
+   edit mover
+      route
+         position 50:00:00.00n 140:00:00.00e altitude 520000 m speed 16000 kts
+         position 40:00:00.00n 155:00:00.00e altitude 520000 m speed 16000 kts
+         position 20:00:00.00n 165:00:00.00e altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 170:00:00.00e altitude 520000 m speed 16000 kts
+         position 15:00:00.00s 175:00:00.00e altitude 520000 m speed 16000 kts
+         position 30:00:00.00s 175:00:00.00w altitude 520000 m speed 16000 kts
+         position 45:00:00.00s 160:00:00.00w altitude 520000 m speed 16000 kts
+         position 50:00:00.00s 140:00:00.00w altitude 520000 m speed 16000 kts
+         position 40:00:00.00s 120:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00s 105:00:00.00w altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 100:00:00.00w altitude 520000 m speed 16000 kts
+         position 15:00:00.00n 95:00:00.00w altitude 520000 m speed 16000 kts
+         position 30:00:00.00n 88:00:00.00w altitude 520000 m speed 16000 kts
+         position 47:00:00.00n 75:00:00.00w altitude 520000 m speed 16000 kts
+         position 50:00:00.00n 60:00:00.00w altitude 520000 m speed 16000 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Sat 4: starts 180deg from Sat1 at equator ---
+platform Leo_Sat_4 LEO_SAT
+   side blue
+   position 0:00:00.00n 80:00:00.00w altitude 520000 m
+   heading 50 deg
+   edit mover
+      route
+         position 0:00:00.00n 80:00:00.00w altitude 520000 m speed 16000 kts
+         position 15:00:00.00s 75:00:00.00w altitude 520000 m speed 16000 kts
+         position 30:00:00.00s 65:00:00.00w altitude 520000 m speed 16000 kts
+         position 45:00:00.00s 50:00:00.00w altitude 520000 m speed 16000 kts
+         position 50:00:00.00s 30:00:00.00w altitude 520000 m speed 16000 kts
+         position 40:00:00.00s 10:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00s 5:00:00.00e altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 10:00:00.00e altitude 520000 m speed 16000 kts
+         position 15:00:00.00n 15:00:00.00e altitude 520000 m speed 16000 kts
+         position 30:00:00.00n 22:00:00.00e altitude 520000 m speed 16000 kts
+         position 47:00:00.00n 35:00:00.00e altitude 520000 m speed 16000 kts
+         position 50:00:00.00n 50:00:00.00e altitude 520000 m speed 16000 kts
+         position 40:00:00.00n 65:00:00.00e altitude 520000 m speed 16000 kts
+         position 20:00:00.00n 75:00:00.00e altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 80:00:00.00e altitude 520000 m speed 16000 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Sat 5: starts 60deg ahead of Sat4 at ~40S ---
+platform Leo_Sat_5 LEO_SAT
+   side blue
+   position 40:00:00.00s 40:00:00.00w altitude 520000 m
+   heading 50 deg
+   edit mover
+      route
+         position 40:00:00.00s 40:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00s 25:00:00.00w altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 20:00:00.00w altitude 520000 m speed 16000 kts
+         position 15:00:00.00n 15:00:00.00w altitude 520000 m speed 16000 kts
+         position 30:00:00.00n 8:00:00.00w altitude 520000 m speed 16000 kts
+         position 47:00:00.00n 5:00:00.00e altitude 520000 m speed 16000 kts
+         position 50:00:00.00n 20:00:00.00e altitude 520000 m speed 16000 kts
+         position 40:00:00.00n 35:00:00.00e altitude 520000 m speed 16000 kts
+         position 20:00:00.00n 45:00:00.00e altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 50:00:00.00e altitude 520000 m speed 16000 kts
+         position 15:00:00.00s 55:00:00.00e altitude 520000 m speed 16000 kts
+         position 30:00:00.00s 65:00:00.00e altitude 520000 m speed 16000 kts
+         position 45:00:00.00s 80:00:00.00e altitude 520000 m speed 16000 kts
+         position 50:00:00.00s 100:00:00.00e altitude 520000 m speed 16000 kts
+         position 40:00:00.00s 120:00:00.00e altitude 520000 m speed 16000 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Sat 6: starts 60deg ahead of Sat5 at 50S ---
+platform Leo_Sat_6 LEO_SAT
+   side blue
+   position 50:00:00.00s 150:00:00.00w altitude 520000 m
+   heading 50 deg
+   edit mover
+      route
+         position 50:00:00.00s 150:00:00.00w altitude 520000 m speed 16000 kts
+         position 40:00:00.00s 130:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00s 115:00:00.00w altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 110:00:00.00w altitude 520000 m speed 16000 kts
+         position 15:00:00.00n 105:00:00.00w altitude 520000 m speed 16000 kts
+         position 30:00:00.00n 98:00:00.00w altitude 520000 m speed 16000 kts
+         position 47:00:00.00n 85:00:00.00w altitude 520000 m speed 16000 kts
+         position 50:00:00.00n 70:00:00.00w altitude 520000 m speed 16000 kts
+         position 40:00:00.00n 55:00:00.00w altitude 520000 m speed 16000 kts
+         position 20:00:00.00n 45:00:00.00w altitude 520000 m speed 16000 kts
+         position 0:00:00.00n 40:00:00.00w altitude 520000 m speed 16000 kts
+         position 15:00:00.00s 35:00:00.00w altitude 520000 m speed 16000 kts
+         position 30:00:00.00s 25:00:00.00w altitude 520000 m speed 16000 kts
+         position 45:00:00.00s 10:00:00.00w altitude 520000 m speed 16000 kts
+         position 50:00:00.00s 10:00:00.00e altitude 520000 m speed 16000 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Ground Gateways ---
+platform Gateway_A GATEWAY_WS
+   side blue
+   position 32:00:00.00n 118:00:00.00e altitude 50 m
+   heading 0 deg
+end_platform
+
+platform Gateway_B GATEWAY_WS
+   side blue
+   position 25:00:00.00n 113:00:00.00e altitude 50 m
+   heading 0 deg
+end_platform
+
+# --- Mobile Terminal (15 km/h NE from 29N 116E) ---
+platform Mobile_Terminal MOBILE_TERMINAL
+   side blue
+   position 29:00:00.00n 116:00:00.00e altitude 10 m
+   heading 45 deg
+   edit mover
+      route
+         position 29:00:00.00n 116:00:00.00e altitude 10 m speed 8 kts
+         position 30:30:00.00n 117:30:00.00e altitude 10 m speed 8 kts
+      end_route
+   end_mover
+end_platform
+
+# --- Communication Networks ---
+network LeoSatNet WSF_COMM_NETWORK_GENERIC
+   comm_link_list
+      link Leo_Sat_1 isl_xmtr Leo_Sat_2 isl_rcvr
+      link Leo_Sat_2 isl_xmtr Leo_Sat_1 isl_rcvr
+      link Leo_Sat_2 isl_xmtr Leo_Sat_3 isl_rcvr
+      link Leo_Sat_3 isl_xmtr Leo_Sat_2 isl_rcvr
+      link Leo_Sat_3 isl_xmtr Leo_Sat_4 isl_rcvr
+      link Leo_Sat_4 isl_xmtr Leo_Sat_3 isl_rcvr
+      link Leo_Sat_4 isl_xmtr Leo_Sat_5 isl_rcvr
+      link Leo_Sat_5 isl_xmtr Leo_Sat_4 isl_rcvr
+      link Leo_Sat_5 isl_xmtr Leo_Sat_6 isl_rcvr
+      link Leo_Sat_6 isl_xmtr Leo_Sat_5 isl_rcvr
+      link Leo_Sat_6 isl_xmtr Leo_Sat_1 isl_rcvr
+      link Leo_Sat_1 isl_xmtr Leo_Sat_6 isl_rcvr
+   end_comm_link_list
+end_network
+
+network GroundFeederNet WSF_COMM_NETWORK_GENERIC
+   comm_link_list
+      link Leo_Sat_1 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_2 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_3 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_4 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_5 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_6 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_1 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_2 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_3 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_4 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_5 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_6 ka_downlink Gateway_B ka_receiver
+   end_comm_link_list
+end_network

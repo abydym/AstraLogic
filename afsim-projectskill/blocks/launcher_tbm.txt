@@ -1,0 +1,49 @@
+# =============================================================================
+# TEMPLATE: TBM Launcher Platform Types
+# Source: demos/tbm_demos/platforms/tbm_launcher1.txt, _launcher2, _launcher3
+# =============================================================================
+# Theater Ballistic Missile (TBM) launcher platforms.
+# Each launcher holds one WSF_EXPLICIT_WEAPON linking to a TBM mover platform.
+# =============================================================================
+
+# --- TBM1_LAUNCHER (with range-based trajectory selection) ---
+platform_type TBM1_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+
+   weapon tbm1-missile WSF_EXPLICIT_WEAPON
+      launched_platform_type TBM1
+      weapon_effects         TBM1_LETHALITY
+
+      script void on_create(WsfPlatform aWeapon, WsfTrack aTrack)
+         double distance = PLATFORM.SlantRangeTo(aTrack);
+         if (distance < 350.0 * MATH.M_PER_NM())
+         {
+            aWeapon.ProcessInput("trajectory_type depressed");
+         }
+         else
+         {
+            aWeapon.ProcessInput("trajectory_type lofted");
+         }
+     end_script
+   end_weapon
+end_platform_type
+
+# --- TBM2_LAUNCHER (simple, no trajectory override) ---
+platform_type TBM2_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+
+   weapon tbm2-missile WSF_EXPLICIT_WEAPON
+      launched_platform_type TBM2
+      weapon_effects         TBM2_LETHALITY
+   end_weapon
+end_platform_type
+
+# --- TBM3_LAUNCHER (simple, no trajectory override) ---
+platform_type TBM3_LAUNCHER WSF_PLATFORM
+   icon Scud_Launcher
+
+   weapon tbm3-missile WSF_EXPLICIT_WEAPON
+      launched_platform_type TBM3
+      weapon_effects         TBM3_LETHALITY
+   end_weapon
+end_platform_type

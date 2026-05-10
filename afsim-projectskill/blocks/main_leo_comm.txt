@@ -1,0 +1,30 @@
+define_path_variable CASE leo_comm
+log_file output/$(CASE).log
+
+event_output file output/$(CASE).evt
+   time_format h:m:s.1
+   enable WEAPON_FIRED
+   enable WEAPON_HIT
+   enable PLATFORM_ADDED
+   enable PLATFORM_DELETED
+   enable COMM_TURNED_ON
+   enable COMM_TURNED_OFF
+   enable MESSAGE_TRANSMITTED
+   enable MESSAGE_RECEIVED
+end_event_output
+
+event_pipe
+   file output/$(CASE).aer
+   use_preset high
+end_event_pipe
+
+file_path .
+include_once platforms/leo_satellite.txt
+include_once platforms/ground_station.txt
+
+include scenarios/laydown.txt
+
+end_time 90 sec
+
+start_date Apr 18 2025
+start_time 12:00:00

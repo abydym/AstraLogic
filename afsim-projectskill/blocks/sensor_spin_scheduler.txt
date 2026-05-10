@@ -1,0 +1,44 @@
+# =============================================================================
+# AFSIM Template: Spin Scheduler / Spinning Radar
+# Extracted from demos/sensor_demos/
+#   Source: spin_scheduler.txt
+# =============================================================================
+# This template demonstrates the "spin" scheduler for a rotating radar.
+
+# --- Radar Signature (1 m^2 constant) ---
+radar_signature SIG_1M2
+   constant 1 m^2
+end_radar_signature
+
+# --- Target Platform Type ---
+platform_type TARGET_SPIN WSF_PLATFORM
+   radar_signature SIG_1M2
+end_platform_type
+
+# --- Spinning Radar Platform ---
+# The scheduler 'spin' rotates the sensor beam continuously.
+platform_type SPIN_RADAR_PLATFORM WSF_PLATFORM
+   add sensor sens WSF_RADAR_SENSOR
+      on
+      scheduler spin
+         scan_period 30 sec
+         starting_beam_azimuth 240 deg
+         clockwise true
+      end_scheduler
+      maximum_range 54 km
+
+      transmitter
+         power 10 gw
+         frequency 10 ghz
+         bandwidth 10 mhz
+      end_transmitter
+      receiver
+         frequency 10 ghz
+         bandwidth 10 mhz
+      end_receiver
+      update_interval 1 sec
+      frame_time 20 sec
+      reports_location
+      reports_velocity
+   end_sensor
+end_platform_type

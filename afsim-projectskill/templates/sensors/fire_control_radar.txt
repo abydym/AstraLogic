@@ -1,0 +1,43 @@
+# Fire Control Radar Template (from demos/shooter/)
+antenna_pattern FCR_ANTENNA
+  sine_pattern
+    azimuth_beamwidth           4.0 deg
+    elevation_beamwidth         4.0 deg
+    peak_gain           30 dB
+  end_sine_pattern
+end_antenna_pattern
+
+sensor FIRE_CONTROL_RADAR WSF_RADAR_SENSOR
+   slew_mode               azimuth_and_elevation
+   azimuth_slew_limits     -45 deg  45 deg
+   elevation_slew_limits   -45 deg  45 deg
+   scan_mode               azimuth_and_elevation
+   azimuth_scan_limits     -15 deg  15 deg
+   elevation_scan_limits   -15 deg  15 deg
+   minimum_range           2 km
+   maximum_range           90 km
+   frame_time              1 sec
+
+   transmitter
+      antenna_pattern      FCR_ANTENNA
+      power                250 kw
+      frequency            3 ghz
+   end_transmitter
+
+   receiver
+      antenna_pattern      FCR_ANTENNA
+      bandwidth            1 mhz
+   end_receiver
+
+   azimuth_error_sigma     0.3 deg
+   elevation_error_sigma   0.3 deg
+   range_error_sigma       4 m
+
+   reports_bearing
+   reports_elevation
+   reports_location
+   reports_velocity
+   track_quality           1.0
+   hits_to_establish_track 2 2
+   hits_to_maintain_track  1 2
+end_sensor

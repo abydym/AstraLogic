@@ -1,0 +1,452 @@
+# =============================================================================
+# NAVAL SAM TACTICS — engagement processor + launch computers + SAM weapons
+# Extracted from demos/ship_ad/
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# NAVAL_SAM_TACTICS — WSF_TASK_PROCESSOR for SAM engagement
+# Source: demos/ship_ad/platforms/naval_sam_tactics.txt
+# The core engagement state machine: DETECTED → ENGAGEABLE → ENGAGE → FIRING
+# Supports optional illuminator-based guidance (USE_ILLUMINATOR flag).
+# ---------------------------------------------------------------------------
+processor NAVAL_SAM_TACTICS WSF_TASK_PROCESSOR
+
+   script_variables
+      bool   USE_ILLUMINATOR           = false;
+      string SENSOR_NAME;
+      string ILLUMINATOR_TYPE;
+      string ILLUMINATOR_MODE          = "default";
+      string WEAPON_NAME;
+
+      string ENVELOPE                  = "full_kinematic";
+
+      string SENSOR_TRACK_MODE         = "TRACK";
+      double REQUIRED_TRACK_QUALITY    = 0.49;
+      int SALVO_SIZE                   = 2;
+
+      string mTrackTaskStr      = "Track";
+      string mIlluminateTaskStr = "Illuminate";
+      string mShootTaskStr      = "Shoot";
+   end_script_variables
+
+   script bool FiringNow()
+      return (WeaponsActiveFor(TRACK.TrackId()) > 0);
+   end_script
+
+   script bool InterceptResultsKnown()
+      return (TimeSinceWeaponLastTerminatedFor(TRACK.TrackId()) > 0.0);
+   end_script
+
+   script bool InInterceptEnvelopeOf(WsfWeapon aWeapon, string aEnvelopeName)
+      extern bool Local_SAM_LaunchComputer(WsfTrack, WsfWeapon, string, double);
+      return Local_SAM_LaunchComputer(TRACK, aWeapon, aEnvelopeName, 0.0);
+   end_script
+
+   script bool IlluminateTarget()
+      if (TasksAssignedFor(TRACK.TrackId(), mIlluminateTaskStr) > 0) return false;
+      bool illuminated=false;
+      int numSensors = PLATFORM.SensorCount();
+      int i;
+      for (i = 0; i < numSensors; i = i + 1)
+      {
+         WsfSensor sensor = PLATFORM.SensorEntry(i);
+         string sensorType = sensor.Type();
+         if (sensorType == ILLUMINATOR_TYPE)
+         {
+            if (TasksAssignedTo(PLATFORM, mIlluminateTaskStr, sensor.Name()) < 1)
+            {
+               illuminated = StartTracking(TRACK, mIlluminateTaskStr,
+                                           sensor, ILLUMINATOR_MODE);
+               if (illuminated) break;
+            }
+         }
+      }
+      return illuminated;
+   end_script
+
+   script bool HasAcquired()
+      return (TRACK.TrackQuality() > 0.75);
+   end_script
+
+   script bool TrackingNow()
+      if (USE_ILLUMINATOR)
+         return (TasksAssignedFor(TRACK.TrackId(), mIlluminateTaskStr) > 0);
+      else
+         return (TRACK.TrackQuality() > 0.95);
+   end_script
+
+   script bool LaunchWeapon()
+      WsfWeapon weapon = PLATFORM.Weapon(WEAPON_NAME);
+      bool canInterceptNow = false;
+      if (weapon.IsTurnedOn() && (weapon.QuantityRemaining() >= SALVO_SIZE))
+         canInterceptNow = InInterceptEnvelopeOf(weapon, ENVELOPE);
+      bool launched = false;
+      if (canInterceptNow)
+      {
+         launched = Fire(TRACK, mShootTaskStr, weapon, SALVO_SIZE);
+         if (launched)
+            writeln_d("*** T=", TIME_NOW, " ", PLATFORM.Name(), " ",
+                      TRACK.TargetName(), " R=", PLATFORM.SlantRangeTo(TRACK),
+                      " FIRE!!!!");
+      }
+      return launched;
+   end_script
+
+   script bool IsEngageable()
+      return ((PLATFORM == PLATFORM.Commander()) ||
+              (TasksReceivedFor(TRACK.TrackId()) > 0) ||
+              (OperatingLevelFor("ENGAGE") > 0));
+   end_script
+
+   script int WeaponsAvailable()
+      int quantity = 0;
+      WsfWeapon weapon = PLATFORM.Weapon(WEAPON_NAME);
+      if (weapon.IsTurnedOn()) quantity = weapon.QuantityRemaining();
+      return quantity;
+   end_script
+
+   script bool Engage()
+      bool engaging = false;
+      if (WeaponsAvailable() < 1) return false;
+      if (USE_ILLUMINATOR)
+      {
+         if (TRACK.BelievedAlive() &&
+             InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME), ENVELOPE))
+            engaging = IlluminateTarget();
+      }
+      else
+      {
+         WsfSensor sensor = PLATFORM.Sensor(SENSOR_NAME);
+         if (! sensor.IsValid()) return engaging;
+         if (sensor.ActiveRequestCount(SENSOR_TRACK_MODE) <
+             sensor.MaximumRequestCount(SENSOR_TRACK_MODE))
+         {
+            if (TRACK.BelievedAlive() &&
+                InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME), ENVELOPE) &&
+                (TRACK.TrackQuality() > REQUIRED_TRACK_QUALITY))
+               engaging = StartTracking(TRACK, mTrackTaskStr, sensor, SENSOR_TRACK_MODE);
+         }
+      }
+      return engaging;
+   end_script
+
+   evaluation_interval DETECTED 2.0 sec
+   state DETECTED
+      next_state DETECTED
+         if (TRACK.IFF_Friend()) { CancelTask(TRACK.TrackId()); return true; }
+         return false;
+      end_next_state
+      next_state ENGAGEABLE
+         return (TRACK.BelievedAlive() && (! TRACK.IFF_Friend()) && IsEngageable());
+      end_next_state
+   end_state
+
+   evaluation_interval ENGAGEABLE 2.0 sec
+   state ENGAGEABLE
+      next_state DETECTED
+         return (TRACK.BelievedDead() || TRACK.IFF_Friend() ||
+                 ((TasksAssignedFor(TRACK.TrackId(), "ENGAGE") < 1) && (! IsEngageable())));
+      end_next_state
+      next_state ENGAGE
+         Engage();
+         if (USE_ILLUMINATOR) return TrackingNow();
+         else return (TrackingNow() && (TasksAssignedFor(TRACK.TrackId(), mTrackTaskStr) > 0));
+      end_next_state
+   end_state
+
+   evaluation_interval ENGAGE 2.0 sec
+   state ENGAGE
+      next_state ENGAGEABLE
+         return (TRACK.BelievedDead() || ! TrackingNow());
+      end_next_state
+      next_state FIRING
+         bool launched = false;
+         if (TRACK.BelievedAlive() && TrackingNow() && ! FiringNow() &&
+             InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME), ENVELOPE))
+            launched = LaunchWeapon();
+         return launched;
+      end_next_state
+   end_state
+
+   evaluation_interval FIRING 2.0 sec
+   state FIRING
+      next_state ENGAGE
+         if (TRACK.BelievedDead() ||
+             ! InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME), ENVELOPE) ||
+             (! FiringNow() && (TasksAssignedFor(TRACK.TrackId(), mShootTaskStr) < 1)) ||
+             (WeaponsAvailable() < 1) || ! TrackingNow())
+         { CancelTask(TRACK.TrackId()); return true; }
+         return false;
+      end_next_state
+   end_state
+
+end_processor
+
+# ---------------------------------------------------------------------------
+# SAM Launch Computers
+# Source: demos/ship_ad/weapons/sam/
+# ---------------------------------------------------------------------------
+script bool RED_SR_SAM_1_LaunchComputer(WsfTrack aTrack,
+                                WsfPlatform aLauncher,
+                                string aEnvelopeName,
+                                double aLaunchDelay)
+   bool canIntercept = false;
+   double tgtAlt = aLauncher.RelativeAltitudeOf(aTrack);
+   double maxTOF = 0.0, avgSpd = 0.0, maxRng = 0.0, shootDelay = 0.0;
+   maxRng = 12000; maxTOF = 25.0; avgSpd = 12000 / 25.0;
+   WsfWaypoint intercept = WsfWaypoint();
+   double tti = aLauncher.InterceptLocation2D(aTrack, intercept, avgSpd,
+aLaunchDelay + shootDelay);
+   if ((tti > 0.0) && (tti < maxTOF))
+   {
+      double lat = intercept.Latitude();
+      double lon = intercept.Longitude();
+      WsfGeoPoint point;
+      point = point.Construct(lat, lon, tgtAlt);
+      canIntercept = point.WithinZoneOf(aLauncher, aEnvelopeName);
+   }
+   return canIntercept;
+end_script
+
+script bool RED_SR_SAM_2_LaunchComputer(WsfTrack aTrack,
+                                WsfPlatform aLauncher,
+                                string aEnvelopeName,
+                                double aLaunchDelay)
+   bool canIntercept = false;
+   double tgtAlt = aLauncher.RelativeAltitudeOf(aTrack);
+   double maxTOF = 0.0, avgSpd = 0.0, maxRng = 0.0, shootDelay = 0.0;
+   maxRng = 40000; maxTOF = 45.0; avgSpd = maxRng / maxTOF;
+   WsfWaypoint intercept = WsfWaypoint();
+   double tti = aLauncher.InterceptLocation2D(aTrack, intercept, avgSpd,
+aLaunchDelay + shootDelay);
+   if ((tti > 0.0) && (tti < maxTOF))
+   {
+      double lat = intercept.Latitude();
+      double lon = intercept.Longitude();
+      WsfGeoPoint point;
+      point = point.Construct(lat, lon, tgtAlt);
+      canIntercept = point.WithinZoneOf(aLauncher, aEnvelopeName);
+   }
+   return canIntercept;
+end_script
+
+# Dispatcher scripts (platform-type aware)
+script bool SAM_LaunchComputer(WsfTrack aTrack, WsfPlatform aAssignee, string aEnvelopeName, double aLaunchDelay)
+   extern bool RED_SR_SAM_1_LaunchComputer(WsfTrack, WsfPlatform, string, double);
+   extern bool RED_SR_SAM_2_LaunchComputer(WsfTrack, WsfPlatform, string, double);
+   bool canIntercept = false;
+   string subType = aAssignee.Type();
+   if (subType == "RED_MISSILE_DESTROYER")
+      canIntercept = RED_SR_SAM_1_LaunchComputer(aTrack, aAssignee, aEnvelopeName, aLaunchDelay);
+   else if (subType == "RED_MISSILE_FRIGATE")
+      canIntercept = RED_SR_SAM_2_LaunchComputer(aTrack, aAssignee, aEnvelopeName, aLaunchDelay);
+   return canIntercept;
+end_script
+
+script bool Local_SAM_LaunchComputer(WsfTrack aTrack, WsfWeapon aWeapon, string aEnvelopeName, double aLaunchDelay)
+   extern bool RED_SR_SAM_1_LaunchComputer(WsfTrack, WsfPlatform, string, double);
+   bool canIntercept = false;
+   string weaponType = aWeapon.Type();
+   WsfPlatform platform = aWeapon.Platform();
+   if (weaponType == "RED_SR_SAM_1")
+      canIntercept = RED_SR_SAM_1_LaunchComputer(aTrack, platform, aEnvelopeName, aLaunchDelay);
+   else if (weaponType == "RED_SR_SAM_2")
+      canIntercept = RED_SR_SAM_2_LaunchComputer(aTrack, platform, aEnvelopeName, aLaunchDelay);
+   return canIntercept;
+end_script
+
+# ---------------------------------------------------------------------------
+# SAM weapons
+# Source: demos/ship_ad/weapons/sam/
+# ---------------------------------------------------------------------------
+# -- RED_SR_SAM_1 (short-range, ~12 km) --
+aero RED_SR_SAM_1_AERO WSF_AERO
+   cd_zero_subsonic    0.30
+   cd_zero_supersonic  0.50
+   mach_begin_cd_rise  0.95
+   mach_end_cd_rise    1.3
+   mach_max_supersonic 2.3
+   reference_area      0.017 m2
+   cl_max              3.5
+end_aero
+
+platform_type RED_SR_SAM_1 WSF_PLATFORM
+  icon SA-8_Missile
+  mover WSF_GUIDED_MOVER
+    total_mass       84.5 kg
+    fuel_mass        25.45 kg
+    thrust           5200 lbf
+    thrust_duration  2.5 sec
+    update_interval  0.10 s
+    aero             RED_SR_SAM_1_AERO
+  end_mover
+  comm uplink WSF_COMM_TRANSCEIVER
+     internal_link data_mgr
+  end_comm
+  processor data_mgr WSF_WEAPON_TRACK_PROCESSOR
+  end_processor
+  processor computer WSF_GUIDANCE_COMPUTER
+    proportional_navigation_gain  6.0
+    velocity_pursuit_gain         6.0
+    g_bias                        1.0
+    maximum_commanded_g           25.0 g
+    update_interval               0.1 s
+  end_processor
+  processor fuse WSF_AIR_TARGET_FUSE
+    max_time_of_flight_to_detonate  25.0 sec
+  end_processor
+end_platform_type
+
+weapon_effects RED_SR_SAM_1_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 20.0 m 0.8
+end_weapon_effects
+
+weapon RED_SR_SAM_1 WSF_EXPLICIT_WEAPON
+   launched_platform_type RED_SR_SAM_1
+   weapon_effects RED_SR_SAM_1_EFFECT
+   quantity 8
+   firing_delay           1.0 sec
+   salvo_interval         3.0 sec
+   slew_mode              azimuth_and_elevation
+   azimuth_slew_limits    -180.0 deg 180.0 deg
+   elevation_slew_limits  10.0 deg 80.0 deg
+   reload_threshold       0
+   reload_increment       8
+   reload_inventory       8
+   reload_time            5 min
+   inhibit_while_reloading true
+end_weapon
+
+# -- RED_SR_NAVAL_SAM_1 (naval SAM, ~30 km, 2-stage) --
+aero RED_SR_NAVAL_SAM_1_AERO WSF_AERO
+   cd_zero_subsonic    0.30
+   cd_zero_supersonic  0.50
+   mach_begin_cd_rise  0.95
+   mach_end_cd_rise    1.3
+   supersonic_cd_slope -0.15
+   mach_max_supersonic 3.0
+   reference_area      0.126 m2
+   cl_max              3.5
+end_aero
+
+platform_type RED_SR_NAVAL_SAM_1 WSF_PLATFORM
+  icon SA-11_Missile
+  mover WSF_GUIDED_MOVER
+    stage 1
+       empty_mass        0.01 kg
+       fuel_mass         230 kg
+       thrust_duration   2.5 sec
+       specific_impulse  250 sec
+       aero              RED_SR_NAVAL_SAM_1_AERO
+    end_stage
+    stage 2
+       total_mass        460 kg
+       fuel_mass         70 kg
+       thrust_duration   8.5 sec
+       specific_impulse  250 sec
+       aero              RED_SR_NAVAL_SAM_1_AERO
+    end_stage
+  end_mover
+  comm uplink WSF_COMM_TRANSCEIVER
+     internal_link data_mgr
+  end_comm
+  processor data_mgr WSF_WEAPON_TRACK_PROCESSOR
+  end_processor
+  processor computer WSF_GUIDANCE_COMPUTER
+    proportional_navigation_gain  6.0
+    velocity_pursuit_gain         6.0
+    g_bias                        1.0
+    maximum_commanded_g           23.0 g
+    update_interval               0.1 s
+  end_processor
+  processor fuse WSF_AIR_TARGET_FUSE
+    max_time_of_flight_to_detonate  45.0 sec
+  end_processor
+end_platform_type
+
+weapon_effects RED_SR_NAVAL_SAM_1_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 17.0 m 0.8
+end_weapon_effects
+
+weapon RED_SR_NAVAL_SAM_1 WSF_EXPLICIT_WEAPON
+   launched_platform_type RED_SR_NAVAL_SAM_1
+   weapon_effects RED_SR_NAVAL_SAM_1_EFFECT
+   quantity 2
+   firing_delay           1.0 sec
+   salvo_interval         3.0 sec
+   slew_mode              azimuth_and_elevation
+   azimuth_slew_limits    -180.0 deg 180.0 deg
+   elevation_slew_limits  10.0 deg 70.0 deg
+   reload_threshold       1
+   reload_increment       1
+   reload_inventory       46
+   reload_time            12 sec
+end_weapon
+
+# -- RED_SR_SAM_2 (longer-range SAM, ~40 km, with onboard seeker) --
+aero RED_SR_SAM_2_AERO WSF_AERO
+   cd_zero_subsonic    0.30
+   cd_zero_supersonic  0.50
+   mach_begin_cd_rise  0.95
+   mach_end_cd_rise    1.3
+   supersonic_cd_slope -0.15
+   mach_max_supersonic 4.0
+   reference_area      0.126 m2
+   cl_max              7.5
+end_aero
+
+platform_type RED_SR_SAM_2 WSF_PLATFORM
+  icon SA-11_Missile
+  mover WSF_GUIDED_MOVER
+    stage 1
+       empty_mass        0.01 kg
+       fuel_mass         265 kg
+       thrust_duration   2.9 sec
+       specific_impulse  250 sec
+       aero              RED_SR_SAM_2_AERO
+    end_stage
+    stage 2
+       total_mass        455 kg
+       fuel_mass         80 kg
+       thrust_duration   9.8 sec
+       specific_impulse  250 sec
+       aero              RED_SR_SAM_2_AERO
+    end_stage
+  end_mover
+  comm uplink WSF_COMM_TRANSCEIVER
+     internal_link data_mgr
+  end_comm
+  processor data_mgr WSF_WEAPON_TRACK_PROCESSOR
+  end_processor
+  processor seeker WSF_PERFECT_TRACKER
+     update_interval 1.0 sec
+     internal_link data_mgr
+  end_processor
+  processor computer WSF_GUIDANCE_COMPUTER
+    guide_to_truth                true
+    proportional_navigation_gain  2.0
+    velocity_pursuit_gain         1.0
+    g_bias                        1.0
+    maximum_commanded_g           23.0 g
+    update_interval               0.1 s
+  end_processor
+  processor fuse WSF_AIR_TARGET_FUSE
+    max_time_of_flight_to_detonate  60.0 sec
+  end_processor
+end_platform_type
+
+weapon_effects RED_SR_SAM_2_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 17.0 m 0.8
+end_weapon_effects
+
+weapon RED_SR_SAM_2 WSF_EXPLICIT_WEAPON
+   launched_platform_type RED_SR_SAM_2
+   weapon_effects RED_SR_SAM_2_EFFECT
+   quantity 32
+   firing_delay           1.0 sec
+   salvo_interval         2.0 sec
+   firing_interval        2.0 sec
+   slew_mode              both
+   azimuth_slew_limits    -180.0 deg 180.0 deg
+   elevation_slew_limits  20 deg 89 deg
+end_weapon

@@ -1,0 +1,39 @@
+# WSF_AIR_MOVER — Command Reference
+# Extracted from AFSIM 2.9.0 Reference Manual
+# Commands found: 35
+
+  navigation<navigation-commands>…end_navigation
+  aux_data<aux-data>…end_aux_data
+  label<string>
+  position<latitude-value><longitude-value>
+  mgrs_coordinate<MGRS-value>
+  offset<x-offset><y-offset><length-units>
+  turn_left<angle-value>/turn_right<angle-value>
+  turn_to_heading<angle-value>
+  goto<string>
+  altitude<length-value>[agl|msl]
+  depth<length-value>
+  heading<angle-value>
+  turn[left|right|shortest]
+  speed<speed-value>
+  linear_acceleration<acceleration-value>
+  radial_acceleration<acceleration-value>
+  bank_angle_limit<angle-value>
+  turn_g_limit<acceleration-value>
+  climb_rate<speed-value>/dive_rate<speed-value>
+  maximum_flight_path_angle<angle-value>
+  pause_time<time-value>
+  execute<script-name><callback-name>
+  extrapolate/stop/remove
+  switch_on_passing/switch_on_approach
+  distance<length-value>/time<time-value>
+  time_to_point<time-value>
+  node_id<string>
+  aux_data<aux-data>…end_aux_data
+  insert_route<route-name>[reference_heading<heading>]
+  insert_route<route-name><latitude><longitude><heading>
+  insert_offset_route<route-name>[reference_heading<heading>]
+  insert_offset_route<route-name><latitude><longitude><heading>
+  transform_absolute_route <route-name> <north-length-value> <east-length-value>
+  transform_route<route-name>[reference_heading<heading>]
+  transform_route<route-name><latitude><longitude><heading>

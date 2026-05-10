@@ -1,0 +1,50 @@
+# WSF_BALLISTIC_MISSILE_LAUNCH_COMPUTER — Command Reference
+# Extracted from AFSIM 2.9.0 Reference Manual
+# Commands found: 46
+
+  air_target_file<air-target-file-name>
+  surface_target_file<surface-target-file-name>
+  gnuplot_file<gnu-plot-file-name>
+  minimum_output_time<time-value>
+  maximum_output_time<time-value>
+  minimum_output_range<distance-value>
+  maximum_output_range<distance-value>
+  maximum_output_altitude<altitude-value>
+  limited_to_preapogee
+  loft_angle<angle-value>
+  loft_anglesfrom<min-angle-value>to<max-angle-value>by<delta-angle-value>
+  burn_time<time-duration-value>
+  burn_timesfrom <min-time-duration-value> to <max-time-duration-value> by
+  pass_1_loft_angle_start<angle-value>
+  pass_1_loft_angle_stop<angle-value>
+  pass_1_loft_angle_step<angle-value>
+  pass_2_loft_angle_step<angle-value>
+  loft_angle_rangemax_angle<angle-value>max_loft<angle-value>by<angle-value>
+  depress_angle_rangemin_angle <angle-value>max_depress<angle-value>by
+  speed<speed-value>
+  pitch<angle-value>
+  leo_data_file<leo-data-file-name>
+  launch_heading<angle-value>
+  launch_headingsfrom<angle-value>to<angle-value>by<angle-value>
+  loft_angle<angle-value>
+  loft_anglesfrom<angle-value>to<angle-value>by<angle-value>
+  pitch_rate<angle-rate-value>
+  pitch_ratesfrom<angle-rate-value>to<angle-rate-value>by<angle-rate-value>
+  test_matrix…end_test_matrix
+  altitudes<distance-values>end_altitudes
+  lateral_offsets<altitude-values>end_lateral_offsets
+  ranges<range-values>end_ranges
+  speeds<speed-values>end_speeds
+  post_generation_interpolation_tests…end_post_generation_interpolation_tests
+  lateral_offset<length-value>
+  altitude<length-value>
+  ground_range<length-value>
+  target_speed<speed-value>
+  test
+  re_parse_produced_input_file
+  tracker_height<length-value>
+  tracker_elevation_limits<angle-value><angle-value>
+  effective_earth_radius<ratio-value>
+  subsystem_uuid<string-value>:设置对应子系统的UUID。
+  subsystem_descriptor<string-value>:设置子系统的人类可读描述。
+  mode_uuid<mode-name><uuid

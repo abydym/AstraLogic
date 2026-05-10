@@ -1,0 +1,13 @@
+# =============================================================================
+# TEMPLATE: Simple Ground Target Platform
+# Source: demos/ballistic/platforms/target.txt, demos/tbm_demos/platforms/target.txt
+# =============================================================================
+# Minimal ground target platform for use as a target for ballistic
+# missile / TBM scenarios.
+# =============================================================================
+
+platform_type TARGET WSF_PLATFORM
+   icon Bullseye
+   mover WSF_GROUND_MOVER end_mover
+   side blue
+end_platform_type

@@ -1,0 +1,7 @@
+platform_type BUILDING WSF_PLATFORM
+   icon Bullseye
+   height 30.0 m
+   length 20.0 m
+   width 20.0 m
+   mover WSF_GROUND_MOVER end_mover
+end_platform_type

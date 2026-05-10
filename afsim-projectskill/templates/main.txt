@@ -1,0 +1,32 @@
+/******************************************************************************
+ * AFSIM Minimal Starting Template
+ * ================================
+ * The simplest possible AFSIM scenario: Red tank → Blue building.
+ * Copy this directory, edit positions & names, and run:
+ *   $AFSIM_HOME/bin/mission.exe -es main.txt
+ *
+ * NOTE: Include BLUE before RED when targets have pre-briefed tracks.
+ ******************************************************************************/
+
+define_path_variable CASE my_scenario
+log_file output/$(CASE).log
+
+# ── Event Output (text log) ──────────────────────────────────────────────
+include event_output.txt
+event_output file output/$(CASE).evt end_event_output
+
+# ── Event Pipe (Mystic visualization) ────────────────────────────────────
+event_pipe
+   file output/$(CASE).aer
+   use_preset high
+end_event_pipe
+
+# ── Platform Types ───────────────────────────────────────────────────────
+include setup.txt
+
+# ── Scenario Laydown ─────────────────────────────────────────────────────
+# IMPORTANT: Include blue (targets) BEFORE red (shooters) when tracks exist
+include scenarios/blue_laydown.txt
+include scenarios/red_laydown.txt
+
+end_time 120 secs

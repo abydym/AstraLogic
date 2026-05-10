@@ -1,0 +1,97 @@
+# =============================================================================
+# AFSIM Template: SAR Sensor (Strip / Narrow Spot)
+# Extracted from demos/sensor_demos/
+#   Sources: strip_sar_demo.txt, narrow_spot_sar_demo.txt, platforms/uav_sar.txt
+# =============================================================================
+# This template provides SAR-related platform types and sensor configurations.
+# Note: The GENERIC_SAR sensor definition is included from base_types and is
+# not defined inline in these demos.
+
+# --- UAV Platform Type with SAR (left/right) ---
+# Extracted from demos/sensor_demos/platforms/uav_sar.txt
+platform_type UAV_SAR WSF_PLATFORM
+   icon Global_Hawk
+
+   script_variables
+      string mCurrentSensorName;
+      string mCurrentSensorMode;
+   end_script_variables
+
+   script void BeginImaging(string aSensorName,
+                            string aSensorMode,
+                            double aGroundRange)
+      double az = 90.0;
+      if (aSensorName == "sar_left") az = -90.0;
+
+      double alt = Altitude();
+      double el = - (MATH.ATan2(alt, aGroundRange));
+      writeln("T=",TIME_NOW, " ", Name(),
+              "; sensor: ", aSensorName, ", mode: ", aSensorMode,
+              ", Az: ", az, ", El: ", el);
+
+      mCurrentSensorName = aSensorName;
+      mCurrentSensorMode = aSensorMode;
+      WsfSensor sensor = Sensor(mCurrentSensorName);
+      sensor.CueToAbsoluteAzEl(az, el);
+      if (aSensorMode != "") sensor.SelectMode(aSensorMode);
+      sensor.TurnOn();
+   end_script
+
+   script void EndImaging()
+      WsfSensor sensor = Sensor(mCurrentSensorName);
+      sensor.TurnOff();
+   end_script
+
+   mover WSF_AIR_MOVER
+   end_mover
+
+   comm datalink WSF_COMM_TRANSCEIVER
+      internal_link          task_mgr
+   end_comm
+
+   sensor sar_right GENERIC_SAR
+      show_status
+      yaw                    90 deg
+      pitch                  -5 deg
+      internal_link          image_proc
+      automatic_turn_off
+   end_sensor
+
+   sensor sar_left  GENERIC_SAR
+      show_status
+      yaw                    -90 deg
+      pitch                  -5 deg
+      internal_link          image_proc
+      automatic_turn_off
+   end_sensor
+
+   processor image_proc WSF_IMAGE_PROCESSOR
+      debug
+      internal_link data_mgr
+   end_processor
+
+   processor task_mgr WSF_TASK_PROCESSOR
+   end_processor
+
+   processor data_mgr WSF_TRACK_PROCESSOR
+   end_processor
+end_platform_type
+
+# --- Narrow-beam SAR spot mode cueing with ApparentLocationOf ---
+# Key technique: use sensor.ApparentLocationOf() for atmospheric refraction
+# compensation when cueing a narrow-beam SAR at long range.
+# Usage in platform instance:
+#
+#   sensor sar_left
+#     mode SPOT_HI_RES
+#        azimuth_field_of_view   -0.01 deg 0.01 deg
+#        elevation_field_of_view -0.01 deg 0.01 deg
+#     end_mode
+#   end_sensor
+#
+#   execute at_time 10 sec absolute
+#      WsfSensor sensor = Sensor("sar_left");
+#      WsfTrack  target = MasterTrackList().Entry(0);
+#      sensor.CueToPoint(sensor.ApparentLocationOf(target.CurrentLocation(), 1.333333));
+#      sensor.TurnOn();
+#   end_execute

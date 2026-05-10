@@ -1,0 +1,6 @@
+# setup.txt — Platform type definitions
+file_path .
+include_once platforms/tank.txt
+include_once platforms/building.txt
+include_once weapons/missile.txt
+include_once processors/missile_processor.txt

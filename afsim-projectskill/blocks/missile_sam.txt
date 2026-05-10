@@ -1,0 +1,79 @@
+# =============================================================================
+# TEMPLATE: SAM Missile Weapon (Complete)
+# Source: demos/launcher/weapons/sam/sam_missile.txt
+# =============================================================================
+# Complete SAM weapon definition including:
+#   - aero block (SAM_MISSILE_AERO)
+#   - launched platform type (SAM_MISSILE)
+#   - weapon_effects (SAM_MISSILE_EFFECT)
+#   - weapon block (SAM_MISSILE)
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Aero model for the missile
+# ---------------------------------------------------------------------------
+aero SAM_MISSILE_AERO WSF_AERO
+   cd_zero_subsonic    0.30
+   cd_zero_supersonic  0.50
+   mach_begin_cd_rise  0.95
+   mach_end_cd_rise    1.3
+   mach_max_supersonic 2.3
+   reference_area      0.017 m2
+   cl_max              3.5
+end_aero
+
+# ---------------------------------------------------------------------------
+# Launched platform type (the missile itself)
+# ---------------------------------------------------------------------------
+platform_type SAM_MISSILE WSF_PLATFORM
+  icon Missile
+
+  mover WSF_GUIDED_MOVER
+    total_mass       84.5 kg
+    fuel_mass        25.45 kg
+    thrust           5200 lbf
+    thrust_duration  20.0 sec
+    update_interval  0.10 s
+    aero             SAM_MISSILE_AERO
+  end_mover
+
+  comm uplink WSF_COMM_TRANSCEIVER
+     internal_link data_mgr
+  end_comm
+
+  processor data_mgr WSF_WEAPON_TRACK_PROCESSOR
+  end_processor
+
+  processor computer WSF_GUIDANCE_COMPUTER
+    proportional_navigation_gain  6.0
+    velocity_pursuit_gain         6.0
+    g_bias                        1.2
+    maximum_commanded_g           25.0 g
+    update_interval               0.1 s
+  end_processor
+
+  processor fuse WSF_AIR_TARGET_FUSE
+    max_time_of_flight_to_detonate  45.0 sec
+  end_processor
+end_platform_type
+
+# ---------------------------------------------------------------------------
+# Weapon effects (lethality)
+# ---------------------------------------------------------------------------
+weapon_effects SAM_MISSILE_EFFECT WSF_GRADUATED_LETHALITY
+   radius_and_pk 20.0 m 0.8
+end_weapon_effects
+
+# ---------------------------------------------------------------------------
+# Weapon definition
+# ---------------------------------------------------------------------------
+weapon SAM_MISSILE WSF_EXPLICIT_WEAPON
+   launched_platform_type SAM_MISSILE
+   weapon_effects SAM_MISSILE_EFFECT
+   quantity 8
+   firing_delay           1.0 sec
+   salvo_interval         3.0 sec
+   slew_mode              azimuth_and_elevation
+   azimuth_slew_limits    -180.0 deg 180.0 deg
+   elevation_slew_limits  10.0 deg 80.0 deg
+end_weapon

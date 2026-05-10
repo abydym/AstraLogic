@@ -1,0 +1,59 @@
+# AFSIM 语法审计 #3 — sensor + radar + antenna 命令
+# 检查日期: 2026-05-09
+
+# === radar sensor 命令 ===
+✅ WSF_RADAR_SENSOR
+✅ maximum_range
+✅ minimum_range
+✅ frame_time
+✅ scan_mode
+✅ slew_mode
+✅ azimuth_scan_limits
+✅ elevation_scan_limits
+✅ azimuth_slew_limits
+✅ elevation_slew_limits
+✅ azimuth_field_of_view
+✅ elevation_field_of_view
+✅ pitch
+
+# === antenna pattern 命令 ===
+✅ antenna_pattern
+✅ uniform_pattern
+❌ sine_pattern
+✅ peak_gain
+✅ azimuth_beamwidth
+✅ elevation_beamwidth
+✅ gnuplot_file
+✅ end_antenna_pattern
+
+# === transmitter/receiver 命令 ===
+✅ transmitter
+✅ receiver
+✅ frequency
+✅ power
+✅ bandwidth
+✅ pulse_repetition_frequency
+✅ pulse_width
+✅ internal_loss
+
+# === 跟踪/报告命令 ===
+✅ reports_bearing
+✅ reports_elevation
+✅ reports_range
+✅ reports_location
+✅ reports_velocity
+✅ track_quality
+✅ hits_to_establish_track
+✅ hits_to_maintain_track
+✅ detection_threshold
+✅ noise_power
+✅ azimuth_error_sigma
+✅ elevation_error_sigma
+✅ range_error_sigma
+
+# === 其他传感器类型 ===
+✅ WSF_GEOMETRIC_SENSOR
+✅ WSF_EOIR_SENSOR
+✅ WSF_ESM_SENSOR
+✅ WSF_SAR_SENSOR
+✅ WSF_ACOUSTIC_SENSOR

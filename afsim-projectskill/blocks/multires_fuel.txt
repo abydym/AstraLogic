@@ -1,0 +1,71 @@
+# =============================================================================
+# AFSIM Template: Multiresolution Fuel
+# Extracted from demos/multiresolution_demos/
+#   Source: fuel/fuel_include.txt, fuel_demo.txt
+# =============================================================================
+# Multiresolution fuel model: switches between constant rate and tabular rate.
+
+# --- Low-Fidelity Fuel (Constant Consumption Rate) ---
+fuel LOW_FIDELITY_FUEL WSF_FUEL
+   maximum_quantity 10000 kg
+   initial_quantity 1000 kg
+   consumption_rate 1 kg/sec
+end_fuel
+
+# --- High-Fidelity Fuel (Tabular Rate by Altitude/Mach) ---
+fuel HIGH_FIDELITY_FUEL WSF_TABULAR_RATE_FUEL
+   maximum_quantity 10000 kg
+   reserve_quantity 1500  kg
+   initial_quantity 1000 kg
+
+   mode TEST_MODE
+
+   fuel_table
+      mode TEST_MODE
+      altitudes
+         units m
+         0 5000 10000
+      end_altitudes
+      mach
+        0.25 0.5 0.75 1.0
+      end_mach
+      rates
+         units kg/s
+      #  0.25 0.5  0.75 1.0    mach
+         3.0  4.5  5.5  7.0  # Sea Level
+         2.0  3.5  4.5  6.0  # 5000 m
+         1.0  2.5  3.5  5.0  # 10000 m
+      end_rates
+   end_fuel_table
+end_fuel
+
+# --- Multiresolution Fuel ---
+# fidelity 0.0-0.5: Low-fidelity (constant rate)
+# fidelity 0.5-1.0: High-fidelity (tabular rate)
+multiresolution_fuel MR_FUEL WSF_MULTIRESOLUTION_FUEL
+   model high_fidelity_fuel
+      fidelity_range 0.5 1.0
+      fuel HIGH_FIDELITY_FUEL
+      end_fuel
+   end_model
+
+   add model low_fidelity_fuel
+      fidelity_range 0.0 0.5
+      fuel LOW_FIDELITY_FUEL
+      end_fuel
+   end_model
+end_multiresolution_fuel
+
+# --- Platform Type for MR Fuel ---
+platform_type MR_FUEL_FIGHTER WSF_PLATFORM
+   icon F-18
+   add mover WSF_AIR_MOVER
+      update_interval 5.0 s
+   end_mover
+   route
+      position 0n 0e altitude 30000 ft speed 300 kts
+      position 1n 0e altitude  5000 ft speed 600 kts
+   end_route
+   multiresolution_fuel MR_FUEL
+   end_multiresolution_fuel
+end_platform_type

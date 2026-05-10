@@ -1,0 +1,23 @@
+platform Leo_Satellite_1 LEO_SAT
+   side blue
+   position 27:00:00.00n 110:00:00.00e altitude 550000 m
+   heading 45 deg
+   edit mover
+      route
+         position 27:00:00.00n 110:00:00.00e altitude 550000 m speed 14000 kts
+         position 33:00:00.00n 120:00:00.00e altitude 550000 m speed 14000 kts
+      end_route
+   end_mover
+end_platform
+
+platform Wuhan_Ground_Station SAT_GS
+   side blue
+   position 30:00:00.00n 115:00:00.00e altitude 50 m
+   heading 0 deg
+end_platform
+
+network LeoSatNet WSF_COMM_NETWORK_GENERIC
+   comm_link_list
+      link Leo_Satellite_1 ka_downlink Wuhan_Ground_Station ka_receiver
+   end_comm_link_list
+end_network

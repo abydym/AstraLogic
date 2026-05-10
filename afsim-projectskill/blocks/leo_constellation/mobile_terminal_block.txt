@@ -1,0 +1,73 @@
+# =============================================================================
+# Block: Mobile Terminal (18dBi, min elev 7deg, handover-capable)
+# Include this in platforms/mobile_terminal.txt
+# =============================================================================
+
+antenna_pattern MT_KA_ANT
+  uniform_pattern
+    peak_gain 18 dB
+  end_uniform_pattern
+end_antenna_pattern
+
+platform_type MOBILE_TERMINAL WSF_PLATFORM
+   icon C4I
+   side blue
+   height 2 m  length 3 m  width 2 m
+
+   mover WSF_GROUND_MOVER
+      maximum_speed 30 kts  minimum_speed 1 kts
+   end_mover
+
+   comm mt_radio WSF_RADIO_TRANSCEIVER
+      antenna_pattern MT_KA_ANT
+      frequency 27.5 ghz
+      power 5 W
+      internal_loss 2.0 dB
+      transfer_rate 8 mbit/s
+      network_name GroundFeederNet
+   end_comm
+
+   processor mt_handover WSF_SCRIPT_PROCESSOR
+      update_interval 1 sec
+      script_variables
+         string current_sat = "none";
+         double best_elev = -1.0;
+         string best_sat = "none";
+      end_script_variables
+      on_update
+         best_elev = -1.0;
+         best_sat = "none";
+         string sat_names[] = {
+            "Leo_Sat_1", "Leo_Sat_2", "Leo_Sat_3",
+            "Leo_Sat_4", "Leo_Sat_5", "Leo_Sat_6"
+         };
+         for (int i = 0; i < 6; i++)
+         {
+            WsfPlatform sat = WsfSimulation.FindPlatform(sat_names[i]);
+            if (!sat.IsValid()) continue;
+            double slant = PLATFORM.SlantRangeTo(sat);
+            double ground = PLATFORM.GroundRangeTo(sat);
+            double elev = (ground < 100) ? 90.0 : 57.2958 * atan2(520000.0, max(ground, 1.0));
+            if (elev >= 7.0 && elev > best_elev)
+            {
+               best_elev = elev;
+               best_sat = sat_names[i];
+            }
+         }
+         if (best_sat != "none" && best_sat != current_sat)
+         {
+            writeln(TIME_NOW, " HANDOVER FROM=", current_sat,
+                    " TO=", best_sat, " ELEV=", best_elev);
+            current_sat = best_sat;
+         }
+         else if (best_sat == "none" && current_sat != "none")
+         {
+            writeln(TIME_NOW, " HANDOVER LOST no_satellite");
+            current_sat = "none";
+         }
+         if (current_sat != "none")
+            writeln(TIME_NOW, " SERVING_SAT=", current_sat, " ELEV=", best_elev);
+      end_on_update
+   end_processor
+
+end_platform_type

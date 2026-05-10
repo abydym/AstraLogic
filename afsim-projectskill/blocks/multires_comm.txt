@@ -1,0 +1,73 @@
+# =============================================================================
+# AFSIM Template: Multiresolution Comm
+# Extracted from demos/multiresolution_demos/
+#   Source: comms/comm_include.txt, comm_demo.txt, comm_with_command_chain_demo.txt
+# =============================================================================
+# Multiresolution comm definitions. Supports switching between a simple
+# datalink (WSF_COMM_TRANSCEIVER) and a physics-based radio (WSF_RADIO_TRANSCEIVER).
+
+# --- Script Variables (shared) ---
+script_variables
+   string commName = "";
+end_script_variables
+
+# --- Simple Datalink ---
+comm TEAM_DATALINK WSF_COMM_TRANSCEIVER
+   transfer_rate 100 mbits/sec
+end_comm
+
+# --- Physics-Based Radio Link ---
+comm TEAM_RADIOLINK WSF_RADIO_TRANSCEIVER
+   transfer_rate 100 mbits/sec
+   transmitter
+     frequency 100 mhz
+     power 1.21 gw
+     maximum_range 100 km
+   end_transmitter
+   receiver
+     frequency 100 mhz
+   end_receiver
+end_comm
+
+# --- Message Receiver Processor ---
+processor MESSAGE_RECEIVER WSF_SCRIPT_PROCESSOR
+   on_message
+      default
+      script
+         writeln(PLATFORM.Name(), " received from ", MESSAGE.Originator(), " with comm type ",
+            PLATFORM.Comm(commName).Type(), " at time ", TIME_NOW, " with tag ", MESSAGE.DataTag());
+      end_script
+   end_on_message
+end_processor
+
+# --- Multiresolution Comm ---
+# fidelity 0.0-0.5: Simple datalink
+# fidelity 0.5-1.0: Physics-based radio
+multiresolution_comm MR_COMM WSF_MULTIRESOLUTION_COMM
+   model low_fidelity_comm
+      fidelity_range 0.0 0.5
+      comm TEAM_DATALINK
+      end_comm
+   end_model
+
+   model high_fidelity_comm
+      fidelity_range 0.5 1.0
+      comm TEAM_RADIOLINK
+      end_comm
+   end_model
+end_multiresolution_comm
+
+# --- Usage with Command Chain ---
+# network my_net WSF_COMM_NETWORK_GENERIC
+#    comm_list
+#       member commander mr_comm
+#       member subordinate mr_comm
+#    end_comm_list
+#    comm_link_list
+#       link commander mr_comm subordinate mr_comm
+#    end_comm_link_list
+# end_network
+
+# --- Usage with Mesh Network ---
+# network mesh_net WSF_COMM_NETWORK_MESH
+# end_network

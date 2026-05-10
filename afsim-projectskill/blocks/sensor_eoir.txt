@@ -1,0 +1,107 @@
+# =============================================================================
+# AFSIM Template: EOIR / IRST Sensor
+# Extracted from demos/sensor_demos/ and demos/multiresolution_demos/
+#   Sources: eoir_demo.txt, scanning_eoir.txt, multiresolution_demos/sensors/
+# =============================================================================
+# This template provides EOIR sensor definitions and IRST sensor definitions.
+
+# --- GENERIC_EOIR Sensor ---
+# Copied from demos/multiresolution_demos/sensors/generic_eoir.txt
+sensor GENERIC_EOIR WSF_EOIR_SENSOR
+   frame_time                          10 sec
+   slew_mode                           azimuth_and_elevation
+   azimuth_slew_limits                 -45 deg 45 deg
+   elevation_slew_limits               -45 deg 45 deg
+   azimuth_slew_rate                   5 deg/s
+   elevation_slew_rate                 5 deg/s
+   selection_mode single
+   ignore_same_side
+
+   atmospheric_attenuation 0.005 per m
+   band visual
+
+   azimuth_field_of_view               -45.0 deg 45.0 deg
+   elevation_field_of_view             -45.0 deg 45.0 deg
+   maximum_range                       50 nm
+   pixel_count  1000  1000
+   detection_threshold 3
+   track_quality .5
+   azimuth_error_sigma 0.45 deg
+   elevation_error_sigma  0.45 deg
+   reports_other
+end_sensor
+
+# --- GENERIC_IRST Sensor ---
+# Copied from demos/multiresolution_demos/sensors/generic_irst.txt
+sensor GENERIC_IRST WSF_IRST_SENSOR
+   azimuth_field_of_view   -45 deg 45 deg
+   elevation_field_of_view -45 deg 45 deg
+   frame_time              10 sec
+   maximum_range           50 nm
+
+   atmospheric_attenuation   0.05 per km
+   background_radiance       500 microwatts/cm^2/sr
+   band                      medium
+
+   noise_equivalent_irradiance  1.0E-12 w/cm^2
+   detection_threshold         3.0
+
+   azimuth_error_sigma         0.001 deg
+   elevation_error_sigma       0.001 deg
+   range_error_sigma           7.0 m
+   hits_to_establish_track     3 5
+   hits_to_maintain_track      1 4
+
+   reports_range
+   reports_bearing
+   reports_elevation
+   reports_location
+   reports_signal_to_noise
+   reports_velocity
+end_sensor
+
+# --- Scanning EOIR Sensor (with yaw_script) ---
+# Extracted from demos/sensor_demos/scanning_eoir.txt
+# Demonstrates platform-level scanning by incrementally modifying yaw.
+platform_type SCANNING_CAM_PLATFORM WSF_PLATFORM
+   add sensor cam WSF_EOIR_SENSOR
+      on
+      azimuth_slew_limits -90 degrees 90 degrees
+      elevation_slew_limits -20 degrees -5 degrees
+      slew_mode both
+      reports_location
+      frame_time 1 s
+      angular_resolution .1 degrees
+      azimuth_field_of_view -10 deg 10 deg
+      update_interval 1 s
+      location 0 0 -100 m
+      internal_link vid_proc
+   end_sensor
+   add processor vid_proc WSF_IMAGE_PROCESSOR
+      internal_link proc
+   end_processor
+   add processor proc WSF_SCRIPT_PROCESSOR
+      on_message
+         type WSF_TRACK_MESSAGE
+            script
+               writeln(TIME_NOW, " detected Sensor Yaw: ", PLATFORM.Sensor("cam").Yaw());
+            end_script
+      end_on_message
+   end_processor
+   script bool IsBetween(double value, double min, double max)
+      return (value >= min) && (value <= max);
+   end_script
+   execute at_interval_of 1 s
+      static int sign = -1;
+      double yaw = PLATFORM.Sensor("cam").Yaw();
+      if (!IsBetween(yaw, -90, 90))
+      {
+         sign = -sign;
+      }
+      PLATFORM.Sensor("cam").SetYaw(yaw + sign * MATH.PI()/32);
+   end_execute
+end_platform_type
+
+# --- Geometric Sensor (for comparison/multiresolution) ---
+sensor GEOM_SENSOR WSF_GEOMETRIC_SENSOR
+end_sensor

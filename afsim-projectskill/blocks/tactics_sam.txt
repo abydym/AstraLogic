@@ -1,0 +1,105 @@
+# =============================================================================
+# TEMPLATE: SAM Tactics (Task) Processor
+# Source: demos/launcher/platforms/tactics_processor1.txt
+# =============================================================================
+# A WSF_TASK_PROCESSOR that tracks and engages air targets with a SAM weapon.
+# Features:
+#   - Engagement envelope check (min/max range)
+#   - Track quality threshold for engagement
+#   - Configurable salvo size
+#   - Supports commander-issued tasking and autonomous engagement
+# =============================================================================
+
+processor SAM_TACTICS_PROCESSOR WSF_TASK_PROCESSOR
+
+   script_variables
+      string SENSOR_NAME               = "radar_set";
+      string SENSOR_TRACK_MODE         = "default";
+      string WEAPON_NAME               = "sam_missile";
+      double REQUIRED_TRACK_QUALITY    = 0.49;
+      int SALVO_SIZE                   = 2;
+
+      string mTrackTaskStr      = "Track";
+      string mShootTaskStr      = "Shoot";
+   end_script_variables
+
+   script bool InInterceptEnvelopeOf(WsfWeapon aWeapon)
+       bool canIntercept = false;
+       double maxRng = 35000;
+       double minRng = 300;
+       double targetrange = PLATFORM.SlantRangeTo(TRACK);
+       if ((targetrange > minRng) && (targetrange < maxRng))
+       {
+         canIntercept = true;
+       }
+       return canIntercept;
+   end_script
+
+   script bool IsEngageable()
+      return (((PLATFORM == PLATFORM.Commander()) ||
+               (TasksReceivedFor(TRACK.TrackId()) > 0) ||
+               (OperatingLevelFor("ENGAGE") > 0))) &&
+               (TRACK.AirDomain());
+   end_script
+
+   script bool TrackingNow()
+      if (SENSOR_NAME == "")
+      {
+         return (TRACK.TrackQuality() > REQUIRED_TRACK_QUALITY);
+      }
+      else
+      {
+         return (TRACK.TrackQuality() > 0.95);
+      }
+   end_script
+
+   script bool LaunchWeapon()
+      WsfWeapon   weapon;
+      weapon = PLATFORM.Weapon(WEAPON_NAME);
+      bool canInterceptNow = false;
+      if (weapon.IsTurnedOn() &&
+          (weapon.QuantityRemaining() >= SALVO_SIZE))
+      {
+         canInterceptNow = InInterceptEnvelopeOf(weapon);
+      }
+      bool launched = false;
+      if (canInterceptNow)
+      {
+         launched = FireAt(TRACK, mShootTaskStr, weapon, SALVO_SIZE);
+         if (launched)
+         {
+            writeln("*** T=", TIME_NOW, " ", PLATFORM.Name(), " ",
+                     TRACK.TargetName(), " R=", PLATFORM.SlantRangeTo(TRACK),
+                     " FIRE!!!!");
+         }
+      }
+      return launched;
+   end_script
+
+   # ---- State Machine ----
+
+   evaluation_interval DETECTED 2.0 sec
+   state DETECTED
+      next_state ENGAGE
+         return (TRACK.BelievedAlive() && IsEngageable());
+      end_next_state
+   end_state
+
+   evaluation_interval ENGAGE 2.0 sec
+   state ENGAGE
+      next_state DETECTED
+         return (TRACK.BelievedDead() || ! TrackingNow());
+      end_next_state
+
+      next_state ENGAGE
+         bool launched = false;
+         if (InInterceptEnvelopeOf(PLATFORM.Weapon(WEAPON_NAME)) &&
+               WeaponsActiveFor(TRACK.TrackId()) < 1)
+         {
+             launched = LaunchWeapon();
+         }
+         return launched;
+      end_next_state
+   end_state
+
+end_processor

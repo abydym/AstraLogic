@@ -1,0 +1,27 @@
+# Launch processor — fires one missile at a target
+processor MISSILE_LAUNCH_PROCESSOR WSF_SCRIPT_PROCESSOR
+   script_variables
+      string WEAPON_NAME = "";
+      double TIME_TO_LAUNCH = 5.0;     # seconds after sim start
+      string TARGET_NAME = "Blue_Base";
+      bool fired = false;
+   end_script_variables
+
+   update_interval 1.0 sec
+   on_update
+      if (fired == false && TIME_NOW >= TIME_TO_LAUNCH)
+      {
+         WsfPlatform target = WsfSimulation.FindPlatform(TARGET_NAME);
+         if (!target.IsValid()) { return; }
+         WsfTrack trk = target.MakeTrack();
+         WsfWeapon wpn = PLATFORM.Weapon(WEAPON_NAME);
+         if (wpn.IsValid())
+         {
+            wpn.CueToTarget(trk);
+            wpn.Fire(trk);
+            writeln("[", TIME_NOW, "] Fired ", WEAPON_NAME, " -> ", TARGET_NAME);
+            fired = true;
+         }
+      }
+   end_on_update
+end_processor

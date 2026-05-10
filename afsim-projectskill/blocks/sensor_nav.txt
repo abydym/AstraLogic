@@ -1,0 +1,74 @@
+# =============================================================================
+# AFSIM Template: Navigation Errors and GPS Status
+# Extracted from demos/sensor_demos/
+#   Source: nav_demo.txt
+# =============================================================================
+# This template demonstrates navigation error models and GPS zone-based control.
+
+# --- Zone-Based GPS Status Processor ---
+processor ZONE_BASED_GPS_STATUS_PROCESSOR WSF_SCRIPT_PROCESSOR
+   update_interval 5 sec
+
+   on_update
+      if (PLATFORM.GPS_Status() < 100)          // Navigation model is defined
+      {
+         if (PLATFORM.WithinZone("no_gps"))
+         {
+            PLATFORM.SetGPS_Status(-1);         // Inside the zone - GPS is not available
+         }
+         else
+         {
+            PLATFORM.SetGPS_Status(1);          // Outside the zone - GPS is available
+         }
+      }
+   end_on_update
+end_processor
+
+# --- UAV Platform Type with Navigation Errors ---
+platform_type UAV_NAV WSF_PLATFORM
+   icon Predator
+
+   mover WSF_AIR_MOVER
+   end_mover
+
+   navigation_errors
+      gps_in_track_error               8 m
+      gps_cross_track_error            2 m
+      gps_vertical_error               3 m
+      ins_vertical_error               10 m
+      time_history_path   .
+      show_status_changes true
+   end_navigation_errors
+
+   sensor perfect WSF_GEOMETRIC_SENSOR
+      frame_time 10 sec
+      maximum_range 200 km
+      ignore_same_side
+      reports_location
+      on
+   end_sensor
+
+   processor gps ZONE_BASED_GPS_STATUS_PROCESSOR
+   end_processor
+end_platform_type
+
+# --- Zone Set for GPS Unavailability ---
+# Example usage:
+# zone NO_GPS_ZONE
+#    polygonal
+#    lat_lon
+#    point <lat> <lon>
+#    point <lat> <lon>
+#    ...
+# end_zone
+#
+# zone_set BLUE_NO_GPS
+#    use_zone NO_GPS_ZONE
+# end_zone_set
+#
+# Then on platform instance:
+# platform uav UAV_NAV
+#    zone_set no_gps
+#       use_zone BLUE_NO_GPS
+#    end_zone_set
+# end_platform

@@ -1,0 +1,65 @@
+# =============================================================================
+# AFSIM Template: Radar Signatures
+# Extracted from demos/multiresolution_demos/
+#   Source: signatures/radar_signatures.txt
+# =============================================================================
+# Radar signature definitions including constant, tabular, and multiresolution.
+
+# --- Constant Radar Signature ---
+radar_signature CONSTANT_RADAR_SIGNATURE
+  constant 100 m^2
+end_radar_signature
+
+# --- Tabular Radar Signature (RCS as a function of aspect angles) ---
+radar_signature TABULAR_RADAR_SIGNATURE
+  state default
+     inline_table dbsm 20 2
+               -90.0  90.0
+       -180.0    0.0   0.0
+       -137.5    0.0   0.0
+       -135.0   20.0  20.0
+       -132.5    0.0   0.0
+        -92.5    0.0   0.0
+        -90.0   20.0  20.0
+        -87.5    0.0   0.0
+        -47.5    0.0   0.0
+        -45.0   20.0  20.0
+        -42.5    0.0   0.0
+         42.5    0.0   0.0
+         45.0   20.0  20.0
+         47.5    0.0   0.0
+         87.5    0.0   0.0
+         90.0   20.0  20.0
+         92.5    0.0   0.0
+        132.5    0.0   0.0
+        135.0   20.0  20.0
+        137.5    0.0   0.0
+        180.0    0.0   0.0
+     end_inline_table
+end_radar_signature
+
+# --- Multiresolution Radar Signature ---
+# Combines constant and tabular signatures with fidelity ranges.
+multiresolution_radar_signature MULTIRESOLUTION_RADAR_SIGNATURE WSF_MULTIRESOLUTION_RADAR_SIGNATURE
+   model constant_sig
+      fidelity_range 0.0 0.5
+      radar_signature CONSTANT_RADAR_SIGNATURE
+      end_radar_signature
+   end_model
+   model tabular_sig
+      fidelity_range 0.5 1.0
+      radar_signature TABULAR_RADAR_SIGNATURE
+      end_radar_signature
+   end_model
+end_multiresolution_radar_signature
+
+# --- Bistatic Radar Signature ---
+radar_signature BISTATIC_RADAR_SIGNATURE
+  use_bisector_for_bistatic true
+  constant 5 m^2
+end_radar_signature
+
+# --- Fighter Radar Signature (10 m^2 constant) ---
+radar_signature FIGHTER_RADAR_SIGNATURE
+   constant 10 m^2
+end_radar_signature

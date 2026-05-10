@@ -1,0 +1,129 @@
+# =============================================================================
+# AFSIM Template: Reusable Platform Type Definitions
+# Extracted from demos/sensor_demos/ and demos/multiresolution_demos/
+# =============================================================================
+# Aggregated reusable platform_type definitions across all demo files.
+
+# --- Simple Fighter (Air Mover only) ---
+platform_type SIMPLE_FIGHTER WSF_PLATFORM
+   icon F-18
+   mover WSF_AIR_MOVER
+   end_mover
+end_platform_type
+
+# --- UAV with EOIR (scripted imaging) ---
+platform_type UAV_EOIR WSF_PLATFORM
+   icon Global_Hawk
+   script_variables
+      string mCurrentSensorName;
+      string mCurrentSensorMode;
+   end_script_variables
+
+   script void BeginImaging(string aSensorName,
+                            string aSensorMode,
+                            double aAzimuth,
+                            double aGroundRange)
+      double az = aAzimuth;
+      double alt = Altitude();
+      double el = - (MATH.ATan2(alt, aGroundRange));
+      writeln("T=",TIME_NOW, " ", Name(),
+              "; sensor: ", aSensorName, ", mode: ", aSensorMode,
+              ", Az: ", az, ", El: ", el);
+      mCurrentSensorName = aSensorName;
+      mCurrentSensorMode = aSensorMode;
+      WsfSensor sensor = Sensor(mCurrentSensorName);
+      sensor.CueToAbsoluteAzEl(az, el);
+      if (aSensorMode != "") sensor.SelectMode(aSensorMode);
+      sensor.TurnOn();
+   end_script
+
+   script void EndImaging()
+      WsfSensor sensor = Sensor(mCurrentSensorName);
+      sensor.TurnOff();
+   end_script
+
+   mover WSF_AIR_MOVER
+   end_mover
+
+   comm datalink WSF_COMM_TRANSCEIVER
+      internal_link          task_mgr
+   end_comm
+
+   sensor eoir GENERIC_EOIR
+      yaw                    0 deg
+      pitch                  -5 deg
+      internal_link          image_proc
+   end_sensor
+
+   processor image_proc WSF_IMAGE_PROCESSOR
+      debug
+   end_processor
+
+   processor task_mgr WSF_TASK_PROCESSOR
+   end_processor
+end_platform_type
+
+# --- Ground Site (EOIR/SAR target) ---
+platform_type GROUND_SITE WSF_PLATFORM
+   icon Ground_Radar
+   radar_signature      GROUND_SITE_RADAR_SIG
+   optical_signature    GROUND_SITE_OPTICAL_SIG
+end_platform_type
+
+# --- Generic EOIR Site ---
+platform_type GENERIC_EOIR_SITE WSF_PLATFORM
+   icon Ground_Radar
+   processor track_mgr WSF_TRACK_PROCESSOR
+   end_processor
+   processor image_proc WSF_IMAGE_PROCESSOR
+     internal_link track_mgr
+   end_processor
+   sensor sensor_eoir GENERIC_EOIR
+      on
+      internal_link image_proc
+   end_sensor
+end_platform_type
+
+# --- Generic IRST Site ---
+platform_type GENERIC_IRST_SITE WSF_PLATFORM
+   icon Ground_Radar
+   processor track_mgr WSF_TRACK_PROCESSOR
+   end_processor
+   sensor sensor_irst GENERIC_IRST
+      on
+      internal_link track_mgr
+   end_sensor
+end_platform_type
+
+# --- MR Sensor Site (multiresolution) ---
+platform_type MR_SENSOR_SITE WSF_PLATFORM
+   processor track_mgr WSF_TRACK_PROCESSOR
+   end_processor
+   processor image_proc WSF_IMAGE_PROCESSOR
+     internal_link track_mgr
+   end_processor
+   multiresolution_sensor mr_sensor MR_SENSOR
+   end_multiresolution_sensor
+end_platform_type
+
+# --- Geometric Sensor Site (for comparison) ---
+platform_type GEOMETRIC_SENSOR_SITE WSF_PLATFORM
+   processor track_mgr WSF_TRACK_PROCESSOR
+   end_processor
+   sensor geom_sensor GEOM_SENSOR
+      on
+      internal_link track_mgr
+      reports_range
+      frame_time               10 sec
+      azimuth_field_of_view   -45.0 deg 45.0 deg
+      elevation_field_of_view -45.0 deg 45.0 deg
+      maximum_range            50 nm
+      slew_mode                 azimuth_and_elevation
+      azimuth_slew_limits     -45 deg 45 deg
+      elevation_slew_limits   -45 deg 45 deg
+      azimuth_slew_rate         5 deg/s
+      elevation_slew_rate       5 deg/s
+      selection_mode            single
+      ignore_same_side
+   end_sensor
+end_platform_type

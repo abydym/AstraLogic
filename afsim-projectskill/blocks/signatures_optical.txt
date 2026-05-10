@@ -1,0 +1,74 @@
+# =============================================================================
+# AFSIM Template: Optical Signatures
+# Extracted from demos/multiresolution_demos/
+#   Sources: signatures/ subdirectory
+# =============================================================================
+# Optical signatures for EOIR/IRST sensors.
+
+# --- Spherical Optical Signature ---
+optical_signature FIGHTER_SPHERICAL_OPTICAL_SIG WSF_COMPOSITE_OPTICAL_SIGNATURE
+   surface sphere
+      radius 2 m
+      temperature adiabatic_wall
+   end_surface
+end_optical_signature
+
+# --- Box Optical Signature ---
+optical_signature FIGHTER_BOX_OPTICAL_SIG WSF_COMPOSITE_OPTICAL_SIGNATURE
+   surface box
+      size 10 m 2 m 2 m
+      temperature adiabatic_wall
+   end_surface
+end_optical_signature
+
+# --- Multi-Shape Optical Signature (wing, nose, body, plume) ---
+optical_signature FIGHTER_MULTI_SHAPE_OPTICAL_SIG WSF_COMPOSITE_OPTICAL_SIGNATURE
+   surface box                       # wing
+      size 3 m 10 m 0.2 m
+      temperature adiabatic_wall
+   end_surface
+   surface cone                      # nose
+      length 1 m
+      radius 0.7 m
+      temperature adiabatic_wall
+   end_surface
+   surface cylinder                  # body
+      length 10.0 m
+      radius 0.7 m
+      temperature adiabatic_wall
+   end_surface
+   surface plume                     # jet plume
+      temperature 700 K
+      length 5 m
+      radius 0.5 m
+   end_surface
+end_optical_signature
+
+# --- Multiresolution Optical Signature ---
+# Combines the three signatures above with fidelity ranges.
+multiresolution_optical_signature FIGHTER_MULTIRESOLUTION_OPTICAL_SIG WSF_MULTIRESOLUTION_OPTICAL_SIGNATURE
+   add model sphere_sig
+      fidelity_range 0.0 0.33
+      optical_signature FIGHTER_SPHERICAL_OPTICAL_SIG
+      end_optical_signature
+   end_model
+   add model box_sig
+      fidelity_range 0.33 0.66
+      optical_signature FIGHTER_BOX_OPTICAL_SIG
+      end_optical_signature
+   end_model
+   model multishape_sig
+      fidelity_range 0.66 1.0
+      optical_signature FIGHTER_MULTI_SHAPE_OPTICAL_SIG
+      end_optical_signature
+   end_model
+end_multiresolution_optical_signature
+
+# --- Simple Ground Site Signatures ---
+radar_signature GROUND_SITE_RADAR_SIG
+   constant 50 m^2
+end_radar_signature
+
+optical_signature GROUND_SITE_OPTICAL_SIG
+   constant 50 m^2
+end_optical_signature

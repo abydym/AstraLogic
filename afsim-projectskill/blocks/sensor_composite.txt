@@ -1,0 +1,88 @@
+# =============================================================================
+# AFSIM Template: Composite Sensor (WSF_COMPOSITE_SENSOR)
+# Extracted from demos/sensor_demos/
+#   Source: composite_demo.txt
+# =============================================================================
+# This template demonstrates a 4-face composite radar with beam definitions.
+
+# --- Multi-beam Radar Sensor ---
+sensor EW_RADAR_COMPOSITE WSF_RADAR_SENSOR
+   frame_time                         10 sec
+
+   beam 1
+      antenna_height                     10 m
+      scan_mode                          azimuth_and_elevation
+      azimuth_scan_limits                -45 deg 45 deg
+      elevation_scan_limits              -45 deg 45 deg
+      antenna_tilt                       40 deg
+
+      transmitter
+         antenna_pattern                 CIRCULAR_ANTENNA
+         power                           100 kw
+         frequency                       200 mhz
+         polarization                    horizontal
+         pulse_width                     50 us
+         pulse_repetition_interval       1250 usec
+         internal_loss                   2 db
+         attenuation_model               earce
+      end_transmitter
+
+      receiver
+         antenna_pattern                 CIRCULAR_ANTENNA
+         beam_tilt                       10.0 deg
+         bandwidth                       2.0 mhz
+         noise_power                     -150 dBw
+         internal_loss                   7 dB
+      end_receiver
+
+      clutter_model                      CLUTTER_NONE
+
+      swerling_case                      1
+      probability_of_false_alarm         10e-6
+      number_of_pulses_integrated        32
+      detector_law                       linear
+   end_beam
+
+   beam 2
+      transmitter
+         frequency                       225 mhz
+      end_transmitter
+      clutter_model                      CLUTTER_NONE
+   end_beam
+
+   hits_to_establish_track             3 5
+   hits_to_maintain_track              1 3
+   reports_range
+   reports_bearing
+   reports_elevation
+end_sensor
+
+# --- Composite Sensor Platform (4 faces, 90 deg each) ---
+# Usage: instantiate with yaw offsets for each face sensor.
+#
+# platform my_radar WSF_PLATFORM
+#    add processor track_proc WSF_TRACK_PROCESSOR end_processor
+#    add sensor my_composite WSF_COMPOSITE_SENSOR
+#       debug
+#       on
+#       ignore_same_side
+#       operating_mode synchronous
+#       sensor face1
+#       sensor face2
+#       sensor face3
+#       sensor face4
+#       internal_link track_proc
+#    end_sensor
+#    add sensor face1 EW_RADAR_COMPOSITE
+#       yaw 0 deg
+#    end_sensor
+#    add sensor face2 EW_RADAR_COMPOSITE
+#       yaw 90 deg
+#    end_sensor
+#    add sensor face3 EW_RADAR_COMPOSITE
+#       yaw 180 deg
+#    end_sensor
+#    add sensor face4 EW_RADAR_COMPOSITE
+#       yaw -90 deg
+#    end_sensor
+# end_platform

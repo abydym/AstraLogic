@@ -1,0 +1,13 @@
+platform Red_Tank TANK
+   side red
+   position 34.0n 118.0w altitude 10 m
+   heading 0 deg
+   processor launch_processor
+      script_variables
+         TIME_TO_LAUNCH = 5.0;
+      end_script_variables
+   end_processor
+   track
+      platform Blue_Base
+   end_track
+end_platform

@@ -1,0 +1,34 @@
+# =============================================================================
+# Block: Network definitions for LEO Constellation
+# Include this AFTER platform deployment in scenarios/laydown.txt
+# =============================================================================
+
+# ISL ring network: each satellite links to its two neighbors
+network LeoSatNet WSF_COMM_NETWORK_GENERIC
+   comm_link_list
+      link Leo_Sat_1 isl_xcvr Leo_Sat_2 isl_xcvr
+      link Leo_Sat_2 isl_xcvr Leo_Sat_3 isl_xcvr
+      link Leo_Sat_3 isl_xcvr Leo_Sat_4 isl_xcvr
+      link Leo_Sat_4 isl_xcvr Leo_Sat_5 isl_xcvr
+      link Leo_Sat_5 isl_xcvr Leo_Sat_6 isl_xcvr
+      link Leo_Sat_6 isl_xcvr Leo_Sat_1 isl_xcvr
+   end_comm_link_list
+end_network
+
+# Ground feeder network: every satellite can link to every ground station
+network GroundFeederNet WSF_COMM_NETWORK_GENERIC
+   comm_link_list
+      link Leo_Sat_1 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_2 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_3 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_4 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_5 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_6 ka_downlink Gateway_A ka_receiver
+      link Leo_Sat_1 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_2 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_3 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_4 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_5 ka_downlink Gateway_B ka_receiver
+      link Leo_Sat_6 ka_downlink Gateway_B ka_receiver
+   end_comm_link_list
+end_network

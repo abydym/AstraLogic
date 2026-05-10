@@ -1,0 +1,36 @@
+# =============================================================================
+# TEMPLATE: SAM Launcher Platform Type
+# Source: demos/launcher/platforms/sam_launcher.txt
+# =============================================================================
+# A surface-to-air missile (SAM) launcher platform with radar sensor,
+# weapon system, communications, and track/task processors.
+# =============================================================================
+
+platform_type SAM_LAUNCHER WSF_PLATFORM
+   icon Launcher
+   sensor radar_set RADAR_SET
+      on
+      internal_link data_mgr
+      internal_link task_mgr
+      ignore_same_side
+   end_sensor
+
+   weapon sam_missile SAM_MISSILE
+      quantity 34
+      firing_delay      5 sec
+      firing_interval   20 sec
+      internal_link data_mgr
+      internal_link task_mgr
+   end_weapon
+
+   comm uplink WSF_COMM_TRANSCEIVER
+     internal_link data_mgr
+   end_comm
+
+   processor task_mgr SAM_TACTICS_PROCESSOR
+   end_processor
+
+   processor data_mgr WSF_TRACK_PROCESSOR
+   end_processor
+
+end_platform_type
