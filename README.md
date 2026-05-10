@@ -20,49 +20,116 @@
 
 ## Overview
 
-**AstraLogic** is an Agent-based framework designed to automate and intelligently govern satellite communication simulations inside the **AFSIM** (Advanced Framework for Simulation, Integration, and Modeling) environment. It treats the AFSIM Warlock/Mystic engine as a high-fidelity **physics engine** and wraps it with Python to manage the full lifecycle of simulation campaigns — from scenario generation through execution to result analysis.
+**AstraLogic** is a one-stop satellite communication simulation & decision platform that seamlessly integrates AFSIM (Advanced Framework for Simulation, Integration, and Modeling) execution with intelligent agent-driven analysis within a single web interface.
 
-At its core, AstraLogic closes the loop between simulation and intelligence: a large-language-model (LLM) agent observes simulation outputs, reasons about the current state of the satellite constellation, and synthesises new WSL (Weapon Simulation Language) scripts that drive the next iteration — all without human intervention.
+Users interact with the system entirely through a web dashboard — submitting simulation requests via an Agent chat interface, which delegates decision-making to **OpenClaw** (an intelligent agent framework). OpenClaw reasons about orbital mechanics, link budgets, and communication strategies, then orchestrates AFSIM simulations via **Skills** and **MCP servers**. Results are automatically parsed and visualized in the dashboard without ever needing to leave the browser.
+
+The architecture consists of:
+
+1. **Frontend** — Streamlit dashboard with Agent chat interface for end-to-end simulation control
+2. **Backend** — FastAPI server coordinating agent decisions and simulation state
+3. **Decision Engine** — OpenClaw agent with custom Skills for link analysis and frequency optimization
+4. **Simulation Bridge** — MCP server protocol for headless AFSIM execution and result ingestion
+5. **Data Layer** — AER parser converting AFSIM binary outputs to structured DataFrames
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         AstraLogic                          │
-│                                                             │
-│  ┌──────────┐    WSL scripts    ┌───────────────────────┐  │
-│  │  LLM /   │ ─────────────────►│   AFSIM Warlock /     │  │
-│  │  Agent   │                   │   Mystic Engine       │  │
-│  │          │◄─────────────────  │   (Physics Layer)     │  │
-│  └──────────┘   CSV / AER logs  └───────────────────────┘  │
-│        │                                  │                 │
-│        │   Perception-Decision-Action     │                 │
-│        └──────────────────────────────────┘                 │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                  AstraLogic One-Stop Platform                  │
+│                                                                │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │    Streamlit Dashboard with Agent Chat Interface        │  │
+│  │    "Plan a LEO-to-ground link with backup path"        │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                               ↓                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  FastAPI Backend ← → OpenClaw Agent Decision Engine    │  │
+│  │  (Request routing, state management, result caching)    │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│        ↓                                           ↑            │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  OpenClaw Skills & MCP Servers                          │  │
+│  │  • LinkBudgetSkill — analyze propagation & margins      │  │
+│  │  • FrequencyOptimizerSkill — select frequencies         │  │
+│  │  • AFSIMExecutor MCP — launch Warlock/Mystic headless  │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│        ↓                                                        │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  AFSIM Simulation (Warlock/Mystic)                      │  │
+│  │  Binary AER Output → pymystic Parser → CSV Results      │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│        ↓                                                        │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  Dashboard Result Visualization                          │  │
+│  │  Orbital plots, link metrics, performance summary        │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Core Architecture
 
-AstraLogic implements a **Perception → Decision → Action** closed loop:
+AstraLogic implements an **Agent-Driven Simulation Pipeline**:
 
-| Phase | Component | Description |
-|-------|-----------|-------------|
-| **Perception** | CSV / AER Parser | Python reads AFSIM's structured output files, extracts link-budget metrics, orbital states, and event logs |
-| **Decision** | LLM Agent | The agent reasons over the parsed state and selects the next maneuver, frequency plan, or routing policy |
-| **Action** | WSL Generator | Python renders updated Weapon Simulation Language scripts that encode the agent's decision for the next simulation run |
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Web Dashboard** | Streamlit | User interface with Agent chat box for natural language requests |
+| **Backend Coordinator** | FastAPI | Routes agent decisions, manages simulation state, caches results |
+| **Decision Engine** | OpenClaw Agent | Reasons about orbital mechanics, link budgets, and resource optimization |
+| **Skill System** | Custom Skills | LinkBudgetAnalyzer, FrequencyOptimizer, ManeuverPlanner |
+| **Simulation Bridge** | MCP (Model Context Protocol) | Headless AFSIM execution, parameter templating, result collection |
+| **Data Parser** | pymystic + pandas | Binary AER → structured CSV for visualization |
 
-Each iteration tightens the feedback loop, progressively converging on optimal communication policies under realistic space-environment constraints.
+### Workflow: End-to-End Simulation
+
+```
+User: "Plan a backup link for Sat-A when it loses contact with GS-1"
+        ↓ (natural language → parsed request)
+OpenClaw Agent receives context:
+  • Current orbital state (from last simulation)
+  • Available frequency bands
+  • Ground station locations
+  • Link margin thresholds
+        ↓ (reasoning loop)
+OpenClaw invokes Skills:
+  1. LinkBudgetSkill.analyze() → SNR for candidate frequencies
+  2. FrequencyOptimizer.select_channels() → optimal band selection
+  3. ManeuverPlanner.compute_handover() → timing & power levels
+        ↓ (decision ready)
+AFSIMExecutor.run() via MCP:
+  • Template WSL with agent-selected parameters
+  • Launch Warlock/Mystic headless
+  • Stream binary AER output
+  • Parse results in real-time
+        ↓ (results ready)
+Dashboard auto-updates with:
+  • Orbital trajectory plots
+  • Link margin time-series
+  • Success/failure metrics
+  • Agent reasoning summary
+```
 
 ---
 
 ## Key Features
 
-- 🔁 **Batch Simulation Runner** — programmatically launch hundreds of Warlock/Mystic runs with varying parameters, collecting results automatically
-- 📝 **Automated WSL Template Generation** — Jinja2-based templating engine that renders scenario scripts from high-level Python configuration objects
-- 📡 **Satellite Link-Budget Analysis** — built-in utilities for Eb/N₀, EIRP, and rain-fade calculations against AFSIM's propagation model outputs
-- 🤖 **LLM-Ready Interfaces** — clean tool-use APIs compatible with OpenAI function calling, LangChain, and custom agent frameworks
-- 📊 **Result Aggregation & Visualisation** — automatic ingestion of `.csv` result files into pandas DataFrames with optional Matplotlib/Plotly dashboards
-- 🔧 **Zero-boilerplate Scenario Setup** — point to your local AFSIM installation and run a scenario in under ten lines of Python
+### ✅ Active Development
+
+- 🤖 **Agent Chat Interface** — Natural language simulation requests directly in the dashboard
+- 🧠 **OpenClaw Decision Engine** — Intelligent agent for link planning, frequency optimization, and maneuver scheduling
+- 🎯 **Skill-based Architecture** — Extensible Skills for link-budget analysis, frequency selection, orbital mechanics
+- 🔌 **MCP Server Integration** — Headless AFSIM execution orchestrated via Model Context Protocol
+- 🔍 **Real-time AER Parser** — Binary simulation output ingestion with live CSV export
+- 📊 **Dashboard Visualization** — Plotly-based orbital plots, link metrics, and performance dashboards
+- ⚡ **FastAPI Backend** — REST API for state queries, result caching, and agent coordination
+- 🔄 **Automated Workflows** — Complete simulation from request to result without leaving the browser
+
+### 📅 Future Enhancements
+
+- Advanced link-budget calculations (rain fade, fading margins)
+- Multi-scenario comparison & optimization loop
+- AFSIM direct launch button for advanced users
+- Expanded orbital mechanics solvers (perturbations, collision avoidance)
 
 ---
 
@@ -71,8 +138,8 @@ Each iteration tightens the feedback loop, progressively converging on optimal c
 ### Prerequisites
 
 - Python ≥ 3.8
-- A local AFSIM installation (Warlock or Mystic engine)
-- An OpenAI-compatible API key (optional — only required for LLM agent features)
+- AFSIM Warlock or Mystic installation (local or remote)
+- OpenClaw configuration (provided in setup)
 
 ### Installation
 
@@ -82,34 +149,75 @@ cd AstraLogic
 pip install -r requirements.txt
 ```
 
-### Running Your First Scenario
+### Running the Platform
 
-```python
-from astralogic import SimulationRunner, AgentController
+```bash
+# Terminal 1: Start the backend API
+python backend.py
+# API available at http://localhost:8000/docs
 
-# 1. Point AstraLogic at the local AFSIM Warlock executable
-runner = SimulationRunner(
-    afsim_exe_path="/opt/afsim/bin/warlock",   # ← set to your local path
-    scenario_template="templates/leo_comms.wsl",
-    output_dir="results/",
-)
-
-# 2. Execute a single scenario and collect outputs
-result = runner.run(params={"altitude_km": 550, "inclination_deg": 53.0})
-print(result.link_budget_summary())
-
-# 3. Attach an LLM agent for closed-loop iteration
-controller = AgentController(runner=runner, model="gpt-4o")
-controller.optimize(objective="maximize_throughput", max_iterations=20)
+# Terminal 2: Launch the dashboard
+streamlit run app.py
+# Dashboard opens at http://localhost:8501
 ```
 
-### Environment Variables
+### Using the Agent Chat Interface
 
-Create a `.env` file (excluded from version control) with:
+Once the dashboard is live, use the **Agent Chat Box** to request simulations:
 
-```dotenv
-AFSIM_EXE_PATH=/opt/afsim/bin/warlock
-OPENAI_API_KEY=sk-...
+**Example 1: Simple link analysis**
+```
+User: "Analyze the communication link between Sat-A and Ground Station-1 
+       when Sat-A passes over the ground station at 14:30 UTC."
+
+OpenClaw will:
+  1. Retrieve orbital ephemerides
+  2. Compute elevation angle and slant range
+  3. Run LinkBudgetSkill to determine SNR margins
+  4. Launch AFSIM simulation via MCP
+  5. Display results in dashboard
+```
+
+**Example 2: Frequency optimization**
+```
+User: "Find the best frequency band for Sat-B to GS-2 link 
+       with at least 6 dB margin and no interference."
+
+OpenClaw will:
+  1. Analyze available frequency allocations
+  2. Check interference environment
+  3. Invoke FrequencyOptimizerSkill
+  4. Simulate multiple candidates in parallel
+  5. Recommend optimal band with reasoning
+```
+
+### Custom Simulation (Advanced)
+
+For direct control, you can also invoke simulations programmatically:
+
+```python
+from aermsg2dataframe import parse_aer_messages
+import pymystic
+import pandas as pd
+
+# Read existing AFSIM output
+with pymystic.Reader('scenarios/demo_output.aer') as reader:
+    messages = list(reader)
+
+# Parse to DataFrames
+df_entity, df_orbital = parse_aer_messages(messages)
+
+# Analyze
+print(f"Simulation duration: {df_entity['simTime'].max()} seconds")
+print(f"Tracked platforms: {sorted(df_entity['platformIndex'].unique())}")
+
+# Compute inter-satellite distance
+sat1 = df_entity[df_entity['platformIndex'] == 1]
+sat2 = df_entity[df_entity['platformIndex'] == 2]
+if len(sat1) > 0 and len(sat2) > 0:
+    distances = ((sat1[['x','y','z']].reset_index(drop=True) - 
+                  sat2[['x','y','z']].reset_index(drop=True))**2).sum(axis=1)**0.5 / 1000
+    print(f"Min distance: {distances.min():.1f} km, Max: {distances.max():.1f} km")
 ```
 
 ---
@@ -118,34 +226,53 @@ OPENAI_API_KEY=sk-...
 
 ```
 AstraLogic/
-├── astralogic/
-│   ├── runner.py          # Batch simulation runner
-│   ├── wsl_generator.py   # WSL script templating
-│   ├── parser.py          # CSV / AER output parser
-│   ├── link_budget.py     # Link-budget calculations
-│   └── agent/
-│       ├── controller.py  # LLM agent controller
-│       └── tools.py       # Agent tool-use definitions
-├── templates/             # WSL scenario templates
-├── results/               # Simulation output (git-ignored)
-├── tests/
-├── requirements.txt
-├── .env.example
-└── README.md
+├── app.py                      # 🎨 Streamlit dashboard (main UI)
+├── backend.py                  # ⚡ FastAPI server
+├── aer_read.py                 # 📡 AER binary parser (pymystic wrapper)
+├── aermsg2dataframe.py         # 📊 Message → DataFrame converter
+├── openclaw_agent.py           # 🤖 LLM agent (planned)
+├── afsim_mcp_server.py         # 🔌 MCP server bridge (planned)
+├── pymystic.py                 # 📦 Local pymystic library
+│
+├── core/                       # Core utility modules
+│   ├── __init__.py
+│   └── afsim_bridge.py         # AFSIM integration helpers
+│
+├── scenarios/                  # AFSIM scenario files
+│   ├── demo_2sat_1gs.txt       # 2 satellites + 1 ground station
+│   ├── demo_output.aer         # Sample AFSIM output (binary)
+│   ├── demo_output.csv         # Converted CSV (for reference)
+│   └── demo_output.evt         # Event log
+│
+├── output/                     # Generated data files
+│   ├── entity.csv              # Parsed platform states
+│   └── orbital.csv             # Parsed orbital elements
+│
+├── docs/                       # Documentation
+├── brand-design-md-main/       # Design system assets
+├── README.md                   # This file
+├── DESIGN.md                   # Architecture & design notes
+├── requirements.txt            # Dependencies
+├── LICENSE                     # MIT License
+└── .env.example                # Environment template (unused for now)
 ```
 
 ---
 
 ## Roadmap
 
-| Milestone | Status | Description |
-|-----------|--------|-------------|
-| Core simulation runner | 🔨 In progress | Batch Warlock/Mystic execution with result collection |
-| WSL template engine | 🔨 In progress | Jinja2-based scenario generation |
-| LLM agent integration | 📅 Planned | OpenAI / LangChain agent loop |
-| MARL constellation routing | 📅 Planned | Multi-Agent Reinforcement Learning for dynamic routing across large LEO constellations |
-| 6G NTN support | 📅 Planned | Non-Terrestrial Network (NTN) channel models aligned with 3GPP Release 17/18 |
-| GUI dashboard | 📅 Planned | Real-time visualisation of orbital states and link budgets |
+| Milestone | Status | Target | Description |
+|-----------|--------|--------|-------------|
+| ✅ AER Parser | Complete | v0.1 | AFSIM binary deserialization (pymystic) |
+| ✅ Dashboard Core | Complete | v0.1 | Streamlit UI with orbital visualization |
+| ✅ FastAPI Backend | Complete | v0.1 | REST API for state management |
+| 🔨 Agent Chat Interface | In Progress | v0.2 | OpenClaw integration with natural language processing |
+| 🔨 LinkBudgetSkill | In Progress | v0.2 | Eb/N₀, EIRP, interference analysis |
+| 🔨 MCP Server Bridge | In Progress | v0.2 | Headless AFSIM execution & result streaming |
+| 📅 FrequencyOptimizerSkill | Planned | v0.3 | Automated frequency band selection |
+| 📅 Multi-scenario Optimization | Planned | v0.3 | Parallel simulation & comparative analysis |
+| 📅 Advanced Orbital Mechanics | Planned | v0.4 | Perturbations, collision avoidance, station-keeping |
+| 📅 Result Export & Reporting | Planned | v0.4 | PDF reports, data archiving, batch export |
 
 ---
 
@@ -167,48 +294,116 @@ This project is licensed under the [MIT License](LICENSE) — see the LICENSE fi
 
 ## 概述
 
-**AstraLogic** 是一个基于智能体（Agent）的框架，旨在自动化和智能化地管理 **AFSIM**（高级仿真、集成与建模框架）环境中的卫星通信仿真。该框架将 AFSIM Warlock/Mystic 引擎视为高保真**物理引擎**，通过 Python 封装层全面管理仿真活动的生命周期——从场景生成、批量执行到结果分析。
+**AstraLogic** 是一个一站式卫星通信仿真决策平台，在单一网页界面中实现了 AFSIM（高级仿真、集成与建模框架）与智能决策引擎的无缝融合。
 
-AstraLogic 的核心在于打通"仿真"与"智能"之间的闭环：大语言模型（LLM）智能体实时观测仿真输出，对卫星星座的当前状态进行推理，并自动合成新的 WSL（武器仿真语言）脚本驱动下一轮迭代，全程无需人工干预。
+用户完全通过网页仪表盘进行交互——在 Agent 对话框中提交仿真需求，由 **OpenClaw** 智能体负责决策。OpenClaw 可以推理轨道力学、链路预算和通信策略，通过 **Skills** 和 **MCP 服务器**协调 AFSIM 的无头执行。仿真完成后，结果自动解析并在仪表盘中可视化展示，用户无需离开浏览器。
+
+系统架构包括：
+
+1. **前端界面** — Streamlit 仪表盘，集成 Agent 对话框用于端到端仿真控制
+2. **后端协调** — FastAPI 服务器，负责路由 Agent 决策和管理仿真状态
+3. **决策引擎** — OpenClaw 智能体，推理轨道和通信优化
+4. **技能系统** — 自定义 Skills 用于链路分析和频率优化
+5. **仿真网桥** — MCP 协议支持无头 AFSIM 执行和结果导入
+6. **数据层** — AER 解析器将 AFSIM 二进制输出转换为结构化 DataFrame
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         AstraLogic                          │
-│                                                             │
-│  ┌──────────┐    WSL 仿真脚本    ┌───────────────────────┐  │
-│  │  大模型 / │ ─────────────────►│   AFSIM Warlock /     │  │
-│  │  智能体   │                   │   Mystic 仿真引擎      │  │
-│  │ (Agent)  │◄─────────────────  │     (物理层)          │  │
-│  └──────────┘   CSV / AER 日志   └───────────────────────┘  │
-│        │                                   │                │
-│        │        感知 — 决策 — 行动          │                │
-│        └───────────────────────────────────┘                │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                  AstraLogic 一站式仿真平台                     │
+│                                                                │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │    Streamlit 仪表盘（含 Agent 对话框）                 │  │
+│  │    "规划卫星A在失去地面站信号时的备用链路"            │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                               ↓                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  FastAPI 后端 ← → OpenClaw Agent 决策引擎             │  │
+│  │  （请求路由、状态管理、结果缓存）                     │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│        ↓                                           ↑            │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  OpenClaw Skills 与 MCP 服务器                         │  │
+│  │  • LinkBudgetSkill — 分析传播与链路余量               │  │
+│  │  • FrequencyOptimizerSkill — 频率选择                 │  │
+│  │  • AFSIMExecutor MCP — 无头启动 Warlock/Mystic       │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│        ↓                                                        │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  AFSIM 仿真（Warlock/Mystic）                         │  │
+│  │  二进制 AER 输出 → pymystic 解析 → CSV 结果           │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│        ↓                                                        │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  仪表盘结果展示                                        │  │
+│  │  轨道图、链路指标、性能总结                           │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
 ```
 ---
 
 ## 核心架构
 
-AstraLogic 实现了 **感知 → 决策 → 行动** 的闭合循环：
+AstraLogic 实现了**智能体驱动的仿真管道**：
 
-| 阶段 | 组件 | 描述 |
-|------|------|------|
-| **感知** | CSV / AER 解析器 | Python 读取 AFSIM 结构化输出文件，提取链路预算指标、轨道状态及事件日志 |
-| **决策** | LLM 智能体 | 智能体基于解析状态进行推理，选择下一步机动方案、频率规划或路由策略 |
-| **行动** | WSL 生成器 | Python 将智能体决策渲染为 WSL 脚本，驱动下一次仿真运行 |
+| 组件 | 技术栈 | 职责 |
+|------|--------|------|
+| **网页仪表盘** | Streamlit | 用户界面与 Agent 对话框，用于自然语言仿真请求 |
+| **后端协调** | FastAPI | 路由 Agent 决策、管理仿真状态、缓存结果 |
+| **决策引擎** | OpenClaw Agent | 推理轨道力学、链路预算和资源优化 |
+| **技能系统** | 自定义 Skills | LinkBudgetAnalyzer、FrequencyOptimizer、ManeuverPlanner |
+| **仿真网桥** | MCP 协议 | 无头 AFSIM 执行、参数模板、结果收集 |
+| **数据解析** | pymystic + pandas | 二进制 AER → 结构化 CSV 用于可视化 |
 
-每次迭代都进一步收紧反馈回路，在真实空间环境约束下逐步收敛至最优通信策略。
+### 工作流：端到端仿真
+
+```
+用户：「规划备用链路，当卫星A与地面站失联时」
+        ↓ （自然语言 → 解析请求）
+OpenClaw Agent 接收上下文：
+  • 当前轨道状态（来自上次仿真）
+  • 可用频段
+  • 地面站位置
+  • 链路余量阈值
+        ↓ （推理循环）
+OpenClaw 调用 Skills：
+  1. LinkBudgetSkill.analyze() → 候选频率的信噪比
+  2. FrequencyOptimizer.select_channels() → 最优频段选择
+  3. ManeuverPlanner.compute_handover() → 时序与功率参数
+        ↓ （决策就绪）
+通过 MCP 执行 AFSIMExecutor：
+  • 用 Agent 选定的参数模板化 WSL
+  • 无头启动 Warlock/Mystic
+  • 实时流式处理二进制 AER 输出
+  • 在线解析结果
+        ↓ （结果就绪）
+仪表盘自动更新：
+  • 轨道轨迹图
+  • 链路余量时间序列
+  • 成功/失败指标
+  • Agent 推理摘要
+```
 
 ---
 
 ## 主要特性
 
-- 🔁 **批量仿真运行器** — 以编程方式启动数百次参数变化的 Warlock/Mystic 仿真，并自动收集结果
-- 📝 **WSL 模板自动生成** — 基于 Jinja2 的模板引擎，将高层 Python 配置对象渲染为场景脚本
-- 📡 **卫星链路预算分析** — 内置 Eb/N₀、EIRP 及雨衰计算工具，对接 AFSIM 传播模型输出
-- 🤖 **LLM 就绪接口** — 兼容 OpenAI 函数调用、LangChain 及自定义智能体框架的简洁工具调用 API
-- 📊 **结果聚合与可视化** — 自动将 `.csv` 结果文件导入 pandas DataFrame，支持 Matplotlib/Plotly 可视化
-- 🔧 **零样板场景配置** — 只需指定本地 AFSIM 安装路径，十行 Python 即可运行场景
+### ✅ 实际开发中
+
+- 🤖 **Agent 对话框** — 在仪表盘中用自然语言提交仿真需求
+- 🧠 **OpenClaw 决策引擎** — 智能体用于链路规划、频率优化和机动调度
+- 🎯 **基于 Skill 的架构** — 可扩展的 Skills 用于链路分析、频率选择、轨道力学
+- 🔌 **MCP 服务器集成** — 通过 Model Context Protocol 协调无头 AFSIM 执行
+- 🔍 **实时 AER 解析器** — 二进制仿真输出摄取与实时 CSV 导出
+- 📊 **仪表盘可视化** — 基于 Plotly 的轨道图、链路指标和性能仪表盘
+- ⚡ **FastAPI 后端** — REST API 用于状态查询、结果缓存和 Agent 协调
+- 🔄 **自动化工作流** — 从请求到结果的完整仿真，无需离开浏览器
+
+### 📅 后续扩展
+
+- 高级链路预算计算（雨衰、衰减余量）
+- 多场景对比与优化循环
+- AFSIM 直接启动按钮（供高级用户使用）
+- 扩展轨道力学求解器（扰动项、碰撞规避）
 
 ---
 
@@ -217,8 +412,8 @@ AstraLogic 实现了 **感知 → 决策 → 行动** 的闭合循环：
 ### 环境要求
 
 - Python ≥ 3.8
-- 本地 AFSIM 安装（Warlock 或 Mystic 引擎）
-- OpenAI 兼容 API 密钥（可选，仅 LLM 智能体功能需要）
+- AFSIM Warlock 或 Mystic 安装（本地或远程）
+- OpenClaw 配置（安装包中提供）
 
 ### 安装
 
@@ -228,34 +423,73 @@ cd AstraLogic
 pip install -r requirements.txt
 ```
 
-### 运行第一个场景
+### 启动平台
 
-```python
-from astralogic import SimulationRunner, AgentController
+```bash
+# 终端 1：启动后端 API
+python backend.py
+# API 文档：http://localhost:8000/docs
 
-# 1. 指定本地 AFSIM Warlock 可执行文件路径
-runner = SimulationRunner(
-    afsim_exe_path="/opt/afsim/bin/warlock",   # ← 修改为你的本地路径
-    scenario_template="templates/leo_comms.wsl",
-    output_dir="results/",
-)
-
-# 2. 执行单次场景并收集输出
-result = runner.run(params={"altitude_km": 550, "inclination_deg": 53.0})
-print(result.link_budget_summary())
-
-# 3. 接入 LLM 智能体进行闭环迭代优化
-controller = AgentController(runner=runner, model="gpt-4o")
-controller.optimize(objective="maximize_throughput", max_iterations=20)
+# 终端 2：启动仪表盘
+streamlit run app.py
+# 仪表盘：http://localhost:8501
 ```
 
-### 环境变量配置
+### 使用 Agent 对话框
 
-创建 `.env` 文件（已加入 `.gitignore`，不会提交到版本库）：
+仪表盘启动后，使用 **Agent 对话框**提交仿真请求：
 
-```dotenv
-AFSIM_EXE_PATH=/opt/afsim/bin/warlock
-OPENAI_API_KEY=sk-...
+**示例 1：简单链路分析**
+```
+用户：「分析卫星A与地面站-1 在UTC 14:30 通过地面站上空时的通信链路」
+
+OpenClaw 将：
+  1. 检索轨道星历
+  2. 计算仰角和斜距
+  3. 运行 LinkBudgetSkill 确定信噪比余量
+  4. 通过 MCP 启动 AFSIM 仿真
+  5. 在仪表盘中展示结果
+```
+
+**示例 2：频率优化**
+```
+用户：「为卫星B到地面站-2 的链路找到最优频段，至少6 dB余量且无干扰」
+
+OpenClaw 将：
+  1. 分析可用频段分配
+  2. 检查干扰环境
+  3. 调用 FrequencyOptimizerSkill
+  4. 并行仿真多个候选频段
+  5. 推荐最优频段并说明理由
+```
+
+### 自定义仿真（高级用户）
+
+若需要直接控制，也可以编程方式调用仿真：
+
+```python
+from aermsg2dataframe import parse_aer_messages
+import pymystic
+import pandas as pd
+
+# 读取现有 AFSIM 输出
+with pymystic.Reader('scenarios/demo_output.aer') as reader:
+    messages = list(reader)
+
+# 解析为 DataFrame
+df_entity, df_orbital = parse_aer_messages(messages)
+
+# 分析
+print(f"仿真时长：{df_entity['simTime'].max()} 秒")
+print(f"追踪平台：{sorted(df_entity['platformIndex'].unique())}")
+
+# 计算星间距离
+sat1 = df_entity[df_entity['platformIndex'] == 1]
+sat2 = df_entity[df_entity['platformIndex'] == 2]
+if len(sat1) > 0 and len(sat2) > 0:
+    distances = ((sat1[['x','y','z']].reset_index(drop=True) - 
+                  sat2[['x','y','z']].reset_index(drop=True))**2).sum(axis=1)**0.5 / 1000
+    print(f"最小距离：{distances.min():.1f} km，最大距离：{distances.max():.1f} km")
 ```
 
 ---
@@ -264,34 +498,53 @@ OPENAI_API_KEY=sk-...
 
 ```
 AstraLogic/
-├── astralogic/
-│   ├── runner.py          # 批量仿真运行器
-│   ├── wsl_generator.py   # WSL 脚本模板引擎
-│   ├── parser.py          # CSV / AER 输出解析器
-│   ├── link_budget.py     # 链路预算计算工具
-│   └── agent/
-│       ├── controller.py  # LLM 智能体控制器
-│       └── tools.py       # 智能体工具调用定义
-├── templates/             # WSL 场景模板
-├── results/               # 仿真输出（已加入 git-ignore）
-├── tests/
-├── requirements.txt
-├── .env.example
-└── README.md
+├── app.py                      # 🎨 Streamlit 仪表盘（主界面）
+├── backend.py                  # ⚡ FastAPI 服务器
+├── aer_read.py                 # 📡 AER 二进制解析器（pymystic 封装）
+├── aermsg2dataframe.py         # 📊 消息 → DataFrame 转换器
+├── openclaw_agent.py           # 🤖 LLM 智能体（筹划中）
+├── afsim_mcp_server.py         # 🔌 MCP 服务器网桥（筹划中）
+├── pymystic.py                 # 📦 本地 pymystic 库
+│
+├── core/                       # 核心实用模块
+│   ├── __init__.py
+│   └── afsim_bridge.py         # AFSIM 集成助手
+│
+├── scenarios/                  # AFSIM 场景文件
+│   ├── demo_2sat_1gs.txt       # 2 颗卫星 + 1 个地面站
+│   ├── demo_output.aer         # 示例 AFSIM 输出（二进制）
+│   ├── demo_output.csv         # 转换后的 CSV（参考）
+│   └── demo_output.evt         # 事件日志
+│
+├── output/                     # 生成的数据文件
+│   ├── entity.csv              # 解析后的平台状态
+│   └── orbital.csv             # 解析后的轨道要素
+│
+├── docs/                       # 文档
+├── brand-design-md-main/       # 设计系统资源
+├── README.md                   # 本文件
+├── DESIGN.md                   # 架构与设计笔记
+├── requirements.txt            # 依赖清单
+├── LICENSE                     # MIT 许可证
+└── .env.example                # 环境变量模板（暂未使用）
 ```
 
 ---
 
 ## 路线图
 
-| 里程碑 | 状态 | 描述 |
-|--------|------|------|
-| 核心仿真运行器 | 🔨 进行中 | Warlock/Mystic 批量执行与结果收集 |
-| WSL 模板引擎 | 🔨 进行中 | 基于 Jinja2 的场景生成 |
-| LLM 智能体集成 | 📅 计划中 | OpenAI / LangChain 智能体闭环 |
-| MARL 星座路由 | 📅 计划中 | 多智能体强化学习（MARL），面向大规模 LEO 星座动态路由优化 |
-| 6G NTN 支持 | 📅 计划中 | 符合 3GPP Release 17/18 的非地面网络（NTN）信道模型 |
-| GUI 仪表盘 | 📅 计划中 | 轨道状态与链路预算的实时可视化界面 |
+| 里程碑 | 状态 | 目标版本 | 描述 |
+|--------|------|--------|------|
+| ✅ AER 解析器 | 已完成 | v0.1 | AFSIM 二进制反序列化（pymystic） |
+| ✅ 仪表盘核心 | 已完成 | v0.1 | Streamlit UI 与轨道可视化 |
+| ✅ FastAPI 后端 | 已完成 | v0.1 | 状态管理 REST API |
+| 🔨 Agent 对话框 | 进行中 | v0.2 | OpenClaw 集成与自然语言处理 |
+| 🔨 LinkBudgetSkill | 进行中 | v0.2 | Eb/N₀、EIRP、干扰分析 |
+| 🔨 MCP 服务器网桥 | 进行中 | v0.2 | 无头 AFSIM 执行与结果流式处理 |
+| 📅 FrequencyOptimizerSkill | 筹划中 | v0.3 | 自动频段选择 |
+| 📅 多场景优化 | 筹划中 | v0.3 | 并行仿真与对比分析 |
+| 📅 高级轨道力学 | 筹划中 | v0.4 | 扰动项、碰撞规避、台站保持 |
+| 📅 结果导出与报告 | 筹划中 | v0.4 | PDF 报告、数据存档、批量导出 |
 
 ---
 
