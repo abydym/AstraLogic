@@ -39,12 +39,12 @@ def msg2df(messages):
     return df_entity, df_orbital
 
 
-with pymystic.Reader('demo_output.aer') as reader:
+with pymystic.Reader('../scenarios/demo_output.aer') as reader:
     # for msg in reader:
     #     print(msg)
     messages = list(reader)
     df_entity, df_orbital = msg2df(messages)
 # print(df_entity.head())
 # print(df_orbital.head())
-df_entity.to_csv("output/entity.csv", index=False)
-df_orbital.to_csv("output/orbital.csv", index=False)
+df_entity.to_csv("../output/entity.csv", index=False)
+df_orbital.to_csv("../output/orbital.csv", index=False)

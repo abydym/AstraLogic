@@ -48,6 +48,13 @@ local_settings.py
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# ─── Project-specific ignores ─────────────────────────────────────────────────
+# Design assets (not part of core platform)
+brand-design-md-main/
+
+# Experimental / drafts folder (all files ignored)
+ignore/
+
 # ─── IDEs & editors ───────────────────────────────────────────────────────────
 .idea/
 .vscode/
@@ -58,7 +65,3 @@ local_settings.py
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# ─── Simulation result output directories ────────────────────────────────────
-results/
-output/
