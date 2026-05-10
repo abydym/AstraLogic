@@ -1,0 +1,61 @@
+0 PLATFORM_ADDED LEO_A Type: WSF_PLATFORM Side: blue \
+
+0 TEAM_NAME_DEFINITION LEO_A blue
+0 PLATFORM_ADDED LEO_B Type: WSF_PLATFORM Side: blue \
+
+0 TEAM_NAME_DEFINITION LEO_B blue
+0 PLATFORM_ADDED GS_BEIJING Type: WSF_PLATFORM Side: blue \
+
+0 TEAM_NAME_DEFINITION GS_BEIJING blue
+0 ROUTER_TURNED_ON LEO_A Router: default Type: WSF_COMM_ROUTER \
+ LLA: 00:00:00.00s 100:39:44.01w 692785 m Heading: 37.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7213.323 m/s * [ 0.832 0.555 0.000 ] Acceleration: 7.351 m/s2 * [ 0.000 -0.000 1.000 ]
+0 ROUTER_TURNED_ON LEO_B Router: default Type: WSF_COMM_ROUTER \
+ LLA: 00:00:00.00n 79:20:15.99e 706941 m Heading: 143.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7197.766 m/s * [ -0.832 0.555 -0.000 ] Acceleration: 7.320 m/s2 * [ -0.000 -0.000 1.000 ]
+0 ROUTER_TURNED_ON GS_BEIJING Router: default Type: WSF_COMM_ROUTER \
+ LLA: 39:54:00.00n 116:24:00.00e 0 m Heading: 0.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 0.000 m/s * [ 0.000 0.000 0.000 ] Acceleration: 0.000 m/s2 * [ 0.000 0.000 0.000 ]
+0 PLATFORM_INITIALIZED LEO_A Type: WSF_PLATFORM Side: blue \
+ LLA: 00:00:00.00s 100:39:44.01w 692785 m Heading: 37.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7213.323 m/s * [ 0.832 0.555 0.000 ] Acceleration: 7.351 m/s2 * [ 0.000 -0.000 1.000 ]
+0 MOVER_OPERATIONAL LEO_A Mover: mover Type: WSF_SPACE_MOVER \
+ LLA: 00:00:00.00s 100:39:44.01w 692785 m Heading: 37.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7213.323 m/s * [ 0.832 0.555 0.000 ] Acceleration: 7.351 m/s2 * [ 0.000 -0.000 1.000 ]
+0 ROUTER_OPERATIONAL LEO_A Router: default Type: WSF_COMM_ROUTER \
+ LLA: 00:00:00.00s 100:39:44.01w 692785 m Heading: 37.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7213.323 m/s * [ 0.832 0.555 0.000 ] Acceleration: 7.351 m/s2 * [ 0.000 -0.000 1.000 ]
+0 PLATFORM_INITIALIZED LEO_B Type: WSF_PLATFORM Side: blue \
+ LLA: 00:00:00.00n 79:20:15.99e 706941 m Heading: 143.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7197.766 m/s * [ -0.832 0.555 -0.000 ] Acceleration: 7.320 m/s2 * [ -0.000 -0.000 1.000 ]
+0 MOVER_OPERATIONAL LEO_B Mover: mover Type: WSF_SPACE_MOVER \
+ LLA: 00:00:00.00n 79:20:15.99e 706941 m Heading: 143.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7197.766 m/s * [ -0.832 0.555 -0.000 ] Acceleration: 7.320 m/s2 * [ -0.000 -0.000 1.000 ]
+0 ROUTER_OPERATIONAL LEO_B Router: default Type: WSF_COMM_ROUTER \
+ LLA: 00:00:00.00n 79:20:15.99e 706941 m Heading: 143.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7197.766 m/s * [ -0.832 0.555 -0.000 ] Acceleration: 7.320 m/s2 * [ -0.000 -0.000 1.000 ]
+0 PLATFORM_INITIALIZED GS_BEIJING Type: WSF_PLATFORM Side: blue \
+ LLA: 39:54:00.00n 116:24:00.00e 0 m Heading: 0.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 0.000 m/s * [ 0.000 0.000 0.000 ] Acceleration: 0.000 m/s2 * [ 0.000 0.000 0.000 ]
+0 ROUTER_OPERATIONAL GS_BEIJING Router: default Type: WSF_COMM_ROUTER \
+ LLA: 39:54:00.00n 116:24:00.00e 0 m Heading: 0.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 0.000 m/s * [ 0.000 0.000 0.000 ] Acceleration: 0.000 m/s2 * [ 0.000 0.000 0.000 ]
+0 SIMULATION_STARTING Year: 2026 Month: 1 Day: 1 Hour: 0 Minute: 0 Second: 0
+0 MOVER_TURNED_ON LEO_A Mover: mover Type: WSF_SPACE_MOVER \
+ LLA: 00:00:00.00s 100:39:44.01w 692785 m Heading: 37.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7213.323 m/s * [ 0.832 0.555 0.000 ] Acceleration: 7.351 m/s2 * [ 0.000 -0.000 1.000 ]
+0 MOVER_TURNED_ON LEO_B Mover: mover Type: WSF_SPACE_MOVER \
+ LLA: 00:00:00.00n 79:20:15.99e 706941 m Heading: 143.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 7197.766 m/s * [ -0.832 0.555 -0.000 ] Acceleration: 7.320 m/s2 * [ -0.000 -0.000 1.000 ]
+688 ECLIPSE_ENTRY  Orbital Elements: SMA: 7078 km ECC: 0.001  INC: 52.99747802 deg RAAN: 359.7750133 deg ARGP: 359.817163 deg MA: 41.811754 deg TA: 41.88822173 deg 
+ LLA: 32:22:48.41n 75:10:49.68w 700689.94 m
+1800 SIMULATION_COMPLETE Year: 2026 Month: 1 Day: 1 Hour: 0 Minute: 30 Second: 0
+1800 PLATFORM_DELETED LEO_A Type: WSF_PLATFORM Side: blue Ps: 1 \
+ LLA: 49:01:34.69n 12:13:30.30e 714363.68 m Heading: 113.843 deg Pitch: -0.069 deg Roll: 0.157 deg \
+ Speed: 7192.457 m/s * [ -0.422 0.907 0.000 ] Acceleration: 7.353 m/s2 * [ -0.097 -0.045 0.994 ]
+1800 PLATFORM_DELETED LEO_B Type: WSF_PLATFORM Side: blue Ps: 1 \
+ LLA: 49:06:48.11s 168:04:33.78w 709706.7 m Heading: 66.384 deg Pitch: -0.069 deg Roll: -0.157 deg \
+ Speed: 7197.603 m/s * [ 0.418 0.909 0.002 ] Acceleration: 7.364 m/s2 * [ 0.097 -0.045 0.994 ]
+1800 PLATFORM_DELETED GS_BEIJING Type: WSF_PLATFORM Side: blue Ps: 1 \
+ LLA: 39:54:00.00n 116:24:00.00e 0 m Heading: 0.000 deg Pitch: 0.000 deg Roll: 0.000 deg \
+ Speed: 0.000 m/s * [ 0.000 0.000 0.000 ] Acceleration: 0.000 m/s2 * [ 0.000 0.000 0.000 ]
