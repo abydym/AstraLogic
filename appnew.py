@@ -116,23 +116,41 @@ def ask_openclaw(message, session_id):
     """通过 openclaw CLI 发送消息给 agent，返回文字回复"""
     cmd = "openclaw.cmd" if sys.platform == "win32" else "openclaw"
     try:
-        # raw bytes → utf-8 解码（Windows GBK 环境不干扰）
         result = subprocess.run(
             [cmd, "agent", "--session-id", session_id, "--message", message, "--json"],
             capture_output=True, timeout=120,
         )
-        if result.returncode != 0:
-            err = result.stderr.decode("utf-8", errors="replace")[:200]
-            return f"❌ CLI 错误 (code {result.returncode}): {err}"
+        stdout = result.stdout.decode("utf-8", errors="replace").strip()
+        stderr = result.stderr.decode("utf-8", errors="replace").strip()
 
-        raw = result.stdout.decode("utf-8", errors="replace")
-        data = json.loads(raw)
+        # ── 情况 1: 返回码非零 → stderr 里有料 ──
+        if result.returncode != 0:
+            return f"❌ CLI 错误 (code {result.returncode}): {(stderr or stdout)[:300]}"
+
+        # ── 情况 2: stdout 为空 → session 可能丢了 ──
+        if not stdout:
+            if stderr:
+                return f"❌ 会话异常: {stderr[:300]}"
+            # session 丢了，尝试重建
+            new_id = str(uuid.uuid4())
+            st.session_state.agent_session_id = new_id
+            return "🔄 会话已过期，已自动重新创建。请重新发送你的问题。"
+
+        # ── 情况 3: 正常 JSON 解析 ──
+        try:
+            data = json.loads(stdout)
+        except json.JSONDecodeError:
+            # stdout 是非 JSON 文本（可能是 CLI 内部错误被打印到了 stdout）
+            return f"❌ CLI 返回异常: {(stdout[:300])}"
+
         payloads = data.get("result", {}).get("payloads", [])
-        return payloads[0].get("text", "(no text)") if payloads else "(empty response)"
+        if payloads:
+            return payloads[0].get("text", "(no text)")
+        # JSON 结构不对，返回原始数据调试用
+        return json.dumps(data, ensure_ascii=False, indent=2)
+
     except subprocess.TimeoutExpired:
         return "⏳ 请求超时，请重试"
-    except json.JSONDecodeError as e:
-        return f"❌ 解析回复失败: {e}"
     except FileNotFoundError:
         return "❌ 找不到 `openclaw` 命令，确保已安装且在 PATH 中"
 
