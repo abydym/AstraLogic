@@ -10,8 +10,12 @@ import uuid
 import subprocess
 import json
 import sys
+import requests as http_requests  # 避免与已有 requests 冲突
 import warnings
 warnings.filterwarnings('ignore')
+
+from conversation_manager import ConversationManager
+from openclaw_status import OpenClawStatus
 
 # ==================== 页面配置 ====================
 st.set_page_config(
@@ -29,7 +33,12 @@ def load_data():
         df_entity = pd.read_csv('output/entity.csv')
         df_orbital = pd.read_csv('output/orbital.csv')
         
-        # 数据预处理
+        # 标记原始 NaN 速度（用于区分静止平台如地面站）
+        df_entity['has_velocity'] = ~(
+            df_entity['vx'].isna() & df_entity['vy'].isna() & df_entity['vz'].isna()
+        )
+
+        # 数据预处理（NaN 补零，便于计算）
         df_entity['vx'] = df_entity['vx'].fillna(0)
         df_entity['vy'] = df_entity['vy'].fillna(0)
         df_entity['vz'] = df_entity['vz'].fillna(0)
@@ -39,24 +48,35 @@ def load_data():
             df_entity['vx']**2 + df_entity['vy']**2 + df_entity['vz']**2
         ) / 1000  # 转换为km/s
         
-        # 计算卫星间距离
-        platform1_data = df_entity[df_entity['platformIndex'] == 1].reset_index(drop=True)
-        platform2_data = df_entity[df_entity['platformIndex'] == 2].reset_index(drop=True)
+        # 计算所有平台对之间的距离
+        platforms = sorted(df_entity['platformIndex'].unique())
+        time_points = sorted(df_entity['simTime'].unique())
+        distance_records = []
         
-        if len(platform1_data) == len(platform2_data):
-            distances = []
-            for i in range(len(platform1_data)):
-                dx = platform1_data.loc[i, 'x'] - platform2_data.loc[i, 'x']
-                dy = platform1_data.loc[i, 'y'] - platform2_data.loc[i, 'y']
-                dz = platform1_data.loc[i, 'z'] - platform2_data.loc[i, 'z']
-                dist = np.sqrt(dx**2 + dy**2 + dz**2) / 1000
-                distances.append(dist)
-            
-            # 创建距离DataFrame
-            df_distance = pd.DataFrame({
-                'simTime': platform1_data['simTime'],
-                'distance': distances
-            })
+        for t in time_points:
+            t_data = df_entity[df_entity['simTime'] == t]
+            pair_dists = []
+            for i in range(len(platforms)):
+                for j in range(i + 1, len(platforms)):
+                    p_i = t_data[t_data['platformIndex'] == platforms[i]]
+                    p_j = t_data[t_data['platformIndex'] == platforms[j]]
+                    if len(p_i) > 0 and len(p_j) > 0:
+                        dx = p_i.iloc[0]['x'] - p_j.iloc[0]['x']
+                        dy = p_i.iloc[0]['y'] - p_j.iloc[0]['y']
+                        dz = p_i.iloc[0]['z'] - p_j.iloc[0]['z']
+                        dist = np.sqrt(dx**2 + dy**2 + dz**2) / 1000
+                        pair_dists.append(dist)
+            if pair_dists:
+                distance_records.append({
+                    'simTime': t,
+                    'avg_distance': np.mean(pair_dists),
+                    'min_distance': np.min(pair_dists),
+                    'max_distance': np.max(pair_dists),
+                    'pair_distances': pair_dists
+                })
+        
+        if distance_records:
+            df_distance = pd.DataFrame(distance_records)
         else:
             df_distance = pd.DataFrame()
         
@@ -112,47 +132,140 @@ def apply_apple_chart_style(fig, dark=False):
     )
 
 # ─── Agent 对话辅助函数 ───
-def ask_openclaw(message, session_id):
-    """通过 openclaw CLI 发送消息给 agent，返回文字回复"""
+def ask_openclaw(message, session_id, gateway_url=None, token=None):
+    """通过 HTTP API 或 CLI 发送消息给 agent，返回文字回复（非流式，兼容旧调用）"""
+    return "".join(ask_openclaw_stream(message, session_id, gateway_url, token))
+
+
+def ask_openclaw_stream(message, session_id, gateway_url=None, token=None):
+    """流式生成器：通过 HTTP API (SSE) 或 CLI 发送消息。
+
+    Yields 结构化事件字典：
+      {"type": "content",    "text": "..."}       # 普通文本 token
+      {"type": "tool_call",  "name": "...", "args": "..."}  # 工具调用开始
+      {"type": "tool_result","name": "...", "result": "..."} # 工具返回结果
+      {"type": "status",     "text": "..."}       # 状态/思考中
+      {"type": "error",      "text": "..."}       # 错误
+    """
+
+    # ── 尝试 HTTP 流式 API ──
+    if gateway_url:
+        try:
+            headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+            payload = {
+                "model": "openclaw/default",
+                "messages": [{"role": "user", "content": message}],
+                "stream": True,
+            }
+            if session_id:
+                payload["user"] = session_id
+
+            with http_requests.post(
+                f"{gateway_url}/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=300,
+                stream=True,
+            ) as resp:
+                if resp.status_code != 200:
+                    raise Exception(f"HTTP {resp.status_code}")
+
+                # 跟踪活跃的工具调用（index -> name）
+                active_tools = {}
+
+                for line in resp.iter_lines(decode_unicode=True):
+                    if not line:
+                        continue
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+
+                        # ── 普通文本内容 ──
+                        content = delta.get("content", "")
+                        if content:
+                            yield {"type": "content", "text": content}
+
+                        # ── 工具调用 ──
+                        tool_calls = delta.get("tool_calls", [])
+                        for tc in tool_calls:
+                            idx = tc.get("index", 0)
+                            fn = tc.get("function", {})
+                            fn_name = fn.get("name", "")
+                            fn_args = fn.get("arguments", "")
+
+                            if fn_name:
+                                # 新工具调用开始
+                                active_tools[idx] = fn_name
+                                yield {"type": "tool_call", "name": fn_name, "args": fn_args}
+                            elif fn_args and idx in active_tools:
+                                # 工具参数持续拼接中
+                                yield {"type": "status", "text": f"🔧 调用 {active_tools[idx]}({fn_args})"}
+
+                        # ── reasoning / thinking 内容 ──
+                        reasoning = delta.get("reasoning_content", "")
+                        if reasoning:
+                            yield {"type": "status", "text": f"💭 {reasoning[:80]}..."}
+
+                    except json.JSONDecodeError:
+                        continue
+
+                return  # 流式成功，不走 CLI
+
+        except Exception:
+            # HTTP 流式失败，降级到 CLI
+            pass
+
+    # ── 回退：CLI 方式（非流式，一次性返回） ──
+    yield {"type": "status", "text": "⏳ 通过 CLI 获取回复..."}
     cmd = "openclaw.cmd" if sys.platform == "win32" else "openclaw"
     try:
         result = subprocess.run(
             [cmd, "agent", "--session-id", session_id, "--message", message, "--json"],
-            capture_output=True, timeout=120,
+            capture_output=True, timeout=300,
         )
         stdout = result.stdout.decode("utf-8", errors="replace").strip()
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
 
-        # ── 情况 1: 返回码非零 → stderr 里有料 ──
         if result.returncode != 0:
-            return f"❌ CLI 错误 (code {result.returncode}): {(stderr or stdout)[:300]}"
+            yield {"type": "error", "text": f"❌ CLI 错误 (code {result.returncode}): {(stderr or stdout)[:300]}"}
+            return
 
-        # ── 情况 2: stdout 为空 → session 可能丢了 ──
         if not stdout:
             if stderr:
-                return f"❌ 会话异常: {stderr[:300]}"
-            # session 丢了，尝试重建
+                yield {"type": "error", "text": f"❌ 会话异常: {stderr[:300]}"}
+                return
             new_id = str(uuid.uuid4())
             st.session_state.agent_session_id = new_id
-            return "🔄 会话已过期，已自动重新创建。请重新发送你的问题。"
+            yield {"type": "error", "text": "🔄 会话已过期，已自动重新创建。请重新发送你的问题。"}
+            return
 
-        # ── 情况 3: 正常 JSON 解析 ──
         try:
             data = json.loads(stdout)
         except json.JSONDecodeError:
-            # stdout 是非 JSON 文本（可能是 CLI 内部错误被打印到了 stdout）
-            return f"❌ CLI 返回异常: {(stdout[:300])}"
+            yield {"type": "error", "text": f"❌ CLI 返回异常: {(stdout[:300])}"}
+            return
 
         payloads = data.get("result", {}).get("payloads", [])
         if payloads:
-            return payloads[0].get("text", "(no text)")
-        # JSON 结构不对，返回原始数据调试用
-        return json.dumps(data, ensure_ascii=False, indent=2)
+            yield {"type": "content", "text": payloads[0].get("text", "(no text)")}
+        else:
+            yield {"type": "content", "text": json.dumps(data, ensure_ascii=False, indent=2)}
 
     except subprocess.TimeoutExpired:
-        return "⏳ 请求超时，请重试"
+        yield {"type": "error", "text": "⏳ 请求超时，请重试"}
     except FileNotFoundError:
-        return "❌ 找不到 `openclaw` 命令，确保已安装且在 PATH 中"
+        yield {"type": "error", "text": "❌ 找不到 `openclaw` 命令，确保已安装且在 PATH 中"}
 
 # ==================== 初始化会话状态 ====================
 if 'running' not in st.session_state:
@@ -308,6 +421,55 @@ df_entity, df_orbital, df_distance = load_data()
 
 # ==================== 侧边栏 ====================
 with st.sidebar:
+    # ── Gateway 配置面板 ──
+    st.markdown("### 🔗 Gateway 配置")
+
+    # Gateway 地址
+    gateway_url = st.text_input(
+        "Gateway 地址",
+        value=st.session_state.get("gateway_url", "http://127.0.0.1:18789"),
+        key="gateway_url_input",
+        help="OpenClaw Gateway 的 HTTP 地址"
+    )
+    st.session_state.gateway_url = gateway_url
+
+    # Token 输入
+    gateway_token = st.text_input(
+        "Token",
+        value=st.session_state.get("gateway_token", ""),
+        type="password",
+        key="gateway_token_input",
+        help="Gateway 认证 Token（在 openclaw.json 的 gateway.auth.token 中配置）"
+    )
+    st.session_state.gateway_token = gateway_token
+
+    # 测试连接按钮
+    if st.button("🔌 测试连接", key="test_gateway_conn"):
+        with st.spinner("检测中..."):
+            ocs = OpenClawStatus()
+            status = ocs.quick_status(
+                gateway_url=gateway_url,
+                token=gateway_token if gateway_token else None
+            )
+            st.session_state.gateway_status = status
+
+    # 显示状态
+    _gw_status = st.session_state.get("gateway_status")
+    if _gw_status:
+        overall = _gw_status.get("overall", "unknown")
+        emoji = OpenClawStatus.status_emoji(overall)
+        st.markdown(f"**状态:** {emoji} {overall.upper()}")
+        if _gw_status.get("gateway_latency_ms", -1) > 0:
+            st.caption(f"端口延迟: {_gw_status['gateway_latency_ms']}ms")
+        if _gw_status.get("api_latency_ms", -1) > 0:
+            st.caption(f"API 延迟: {_gw_status['api_latency_ms']}ms")
+        if _gw_status.get("models"):
+            st.caption(f"模型: {', '.join(_gw_status['models'][:3])}")
+
+    st.caption("🔒 Token 仅存于浏览器会话中，不会写入代码文件")
+    st.markdown("---")
+
+    # ── 原有侧边栏内容 ──
     st.markdown("""
     <div style="text-align: center; padding: 1rem;">
         <h2 style="margin-bottom: 0.5rem; font-family: 'SF Pro Display', system-ui, -apple-system, sans-serif;">🛰️ AstraLogic 控制台</h2>
@@ -453,19 +615,24 @@ if df_entity is not None:
     
     # 计算指标
     total_platforms = len(selected_platforms)
-    avg_velocity = current_data[current_data['platformIndex'].isin(selected_platforms)]['velocity_magnitude'].mean()
     
-    # 计算卫星间距离
-    if df_distance is not None and current_time in df_distance['simTime'].values:
-        current_distance = df_distance[df_distance['simTime'] == current_time]['distance'].values[0]
+    # 平均速度：只统计有实际速度数据的运动平台（排除地面站等静止平台）
+    valid_velocity = current_data[
+        (current_data['platformIndex'].isin(selected_platforms)) &
+        (current_data['has_velocity'] == True)
+    ]['velocity_magnitude']
+    avg_velocity = valid_velocity.mean() if len(valid_velocity) > 0 else 0
+    
+    # 卫星间距离：使用所有平台对的平均距离
+    max_comm_range = 10000  # 10000 km
+    if df_distance is not None and len(df_distance) > 0 and current_time in df_distance['simTime'].values:
+        current_row = df_distance[df_distance['simTime'] == current_time].iloc[0]
+        current_distance = current_row['avg_distance']
+        # 通信覆盖率：当前时刻所有平台对中，距离在通信范围内的比例
+        pair_dists = current_row['pair_distances']
+        coverage_ratio = sum(1 for d in pair_dists if d <= max_comm_range) / len(pair_dists) * 100
     else:
         current_distance = 0
-    
-    # 通信覆盖率
-    if len(df_distance) > 0:
-        max_comm_range = 10000  # 10000 km
-        coverage_ratio = sum(1 for d in df_distance['distance'] if d <= max_comm_range) / len(df_distance) * 100
-    else:
         coverage_ratio = 0
     
     with col1:
@@ -883,11 +1050,27 @@ with tab2:
                 
                 fig_dist.add_trace(go.Scatter(
                     x=df_distance['simTime'],
-                    y=df_distance['distance'],
+                    y=df_distance['avg_distance'],
                     mode='lines+markers',
-                    name='卫星间距离',
+                    name='平均距离',
                     line=dict(color='purple', width=3),
                     marker=dict(size=4)
+                ))
+                
+                fig_dist.add_trace(go.Scatter(
+                    x=df_distance['simTime'],
+                    y=df_distance['min_distance'],
+                    mode='lines',
+                    name='最小距离',
+                    line=dict(color='green', width=1, dash='dot')
+                ))
+                
+                fig_dist.add_trace(go.Scatter(
+                    x=df_distance['simTime'],
+                    y=df_distance['max_distance'],
+                    mode='lines',
+                    name='最大距离',
+                    line=dict(color='orange', width=1, dash='dot')
                 ))
                 
                 # 添加通信阈值线
@@ -895,13 +1078,14 @@ with tab2:
                 fig_dist.add_hline(y=max_comm_range, line_dash="dash", line_color="red",
                                   annotation_text="最大通信距离")
                 
+                y_max = max(df_distance['max_distance'].max(), max_comm_range) * 1.1
                 fig_dist.update_layout(
                     title='卫星间距离随时间变化（通信链路评估）',
                     xaxis_title='仿真时间 (秒)',
                     yaxis_title='距离 (km)',
                     height=500,
                     showlegend=True,
-                    yaxis=dict(range=[0, max(df_distance['distance']) * 1.1])
+                    yaxis=dict(range=[0, y_max])
                 )
                 apply_apple_chart_style(fig_dist)
                 
@@ -912,16 +1096,16 @@ with tab2:
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    min_dist = df_distance['distance'].min()
-                    st.metric("最小距离", f"{min_dist:.1f} km")
+                    min_dist = df_distance['min_distance'].min()
+                    st.metric("全局最小距离", f"{min_dist:.1f} km")
                 
                 with col2:
-                    max_dist = df_distance['distance'].max()
-                    st.metric("最大距离", f"{max_dist:.1f} km")
+                    max_dist = df_distance['max_distance'].max()
+                    st.metric("全局最大距离", f"{max_dist:.1f} km")
                 
                 with col3:
-                    avg_dist = df_distance['distance'].mean()
-                    st.metric("平均距离", f"{avg_dist:.1f} km")
+                    avg_dist = df_distance['avg_distance'].mean()
+                    st.metric("全局平均距离", f"{avg_dist:.1f} km")
             
             else:
                 st.warning("无法计算卫星间距离")
@@ -987,6 +1171,31 @@ with tab2:
         st.warning("无法加载卫星数据，请检查数据文件路径")
 
 # ==================== Tab 3: Agent对话 ====================
+
+def _ensure_default_conversation(cm):
+    """确保至少有一个会话，返回当前会话 ID 和 openclaw_session_id。"""
+    convs = cm.list_conversations()
+    if convs:
+        return convs[0]["id"], convs[0]["openclaw_session_id"]
+    # 没有任何会话，自动创建一个
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    oc_sid = str(uuid.uuid4())
+    cid = cm.create_conversation(f"新对话 {now_str}", oc_sid)
+    return cid, oc_sid
+
+
+def _load_messages_to_state(cm, conversation_id):
+    """从 SQLite 加载消息到 session_state.messages。"""
+    try:
+        msgs = cm.get_messages(conversation_id)
+        st.session_state.messages = [
+            {"role": m["role"], "content": m["content"]} for m in msgs
+        ]
+    except Exception as e:
+        st.error(f"加载消息失败: {e}")
+        st.session_state.messages = []
+
+
 with tab3:
     st.markdown("""
     <style>
@@ -998,39 +1207,302 @@ with tab3:
     </style>
     """, unsafe_allow_html=True)
 
+    # ── 初始化会话管理器和 OpenClaw 状态 ──
+    try:
+        cm = ConversationManager()
+    except Exception as e:
+        st.error(f"会话管理器初始化失败: {e}")
+        cm = None
+
+    try:
+        ocs = OpenClawStatus()
+    except Exception as e:
+        ocs = None
+
+    # ── 确保有默认会话 ──
+    if cm is not None:
+        if "current_conversation_id" not in st.session_state or not st.session_state.current_conversation_id:
+            try:
+                cid, oc_sid = _ensure_default_conversation(cm)
+                st.session_state.current_conversation_id = cid
+                st.session_state.agent_session_id = oc_sid
+                _load_messages_to_state(cm, cid)
+            except Exception as e:
+                st.error(f"初始化默认会话失败: {e}")
+
+    # ── 侧边栏：会话管理 ──
+    with st.sidebar:
+        st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+        st.subheader("💬 会话管理")
+
+        if cm is not None:
+            # 新建会话按钮
+            if st.button("➕ 新建会话", key="sidebar_new_conv", width='stretch'):
+                try:
+                    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    oc_sid = str(uuid.uuid4())
+                    new_cid = cm.create_conversation(f"新对话 {now_str}", oc_sid)
+                    st.session_state.current_conversation_id = new_cid
+                    st.session_state.agent_session_id = oc_sid
+                    st.session_state.messages = []
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"创建会话失败: {e}")
+
+            st.markdown("---")
+
+            # 会话列表
+            try:
+                convs = cm.list_conversations()
+                if convs:
+                    conv_options = {}
+                    conv_labels = []
+                    for c in convs:
+                        label = f"{c['title']} ({c['message_count']}条消息)"
+                        conv_options[label] = c["id"]
+                        conv_labels.append(label)
+
+                    current_cid = st.session_state.get("current_conversation_id", "")
+                    # 找到当前选中的索引
+                    current_idx = 0
+                    for i, c in enumerate(convs):
+                        if c["id"] == current_cid:
+                            current_idx = i
+                            break
+
+                    selected_label = st.radio(
+                        "会话列表",
+                        options=conv_labels,
+                        index=current_idx,
+                        key="conv_radio",
+                        label_visibility="collapsed",
+                    )
+                    selected_cid = conv_options[selected_label]
+
+                    # 切换会话
+                    if selected_cid != st.session_state.get("current_conversation_id"):
+                        st.session_state.current_conversation_id = selected_cid
+                        # 获取该会话的 openclaw_session_id
+                        try:
+                            conv_info = cm.get_conversation(selected_cid)
+                            st.session_state.agent_session_id = conv_info["openclaw_session_id"]
+                        except Exception:
+                            pass
+                        _load_messages_to_state(cm, selected_cid)
+                        st.rerun()
+                else:
+                    st.caption("暂无会话")
+            except Exception as e:
+                st.error(f"加载会话列表失败: {e}")
+
+            st.markdown("---")
+
+            # 重命名和删除按钮
+            current_cid = st.session_state.get("current_conversation_id")
+            if current_cid:
+                col_rename, col_delete = st.columns(2)
+
+                with col_rename:
+                    if st.button("✏️ 重命名", key="btn_rename_conv", width='stretch'):
+                        st.session_state.show_rename_input = True
+
+                with col_delete:
+                    if st.button("🗑️ 删除", key="btn_delete_conv", width='stretch'):
+                        st.session_state.show_delete_confirm = True
+
+                # 重命名输入框
+                if st.session_state.get("show_rename_input"):
+                    new_name = st.text_input("新会话标题", key="rename_input_text")
+                    col_ok, col_cancel = st.columns(2)
+                    with col_ok:
+                        if st.button("✅ 确认", key="btn_rename_ok"):
+                            if new_name.strip():
+                                try:
+                                    cm.rename_conversation(current_cid, new_name.strip())
+                                    st.session_state.show_rename_input = False
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"重命名失败: {e}")
+                    with col_cancel:
+                        if st.button("❌ 取消", key="btn_rename_cancel"):
+                            st.session_state.show_rename_input = False
+                            st.rerun()
+
+                # 删除确认
+                if st.session_state.get("show_delete_confirm"):
+                    st.warning("⚠️ 确定要删除此会话吗？所有消息将被永久删除。")
+                    col_yes, col_no = st.columns(2)
+                    with col_yes:
+                        if st.button("🗑️ 确认删除", key="btn_delete_yes"):
+                            try:
+                                cm.delete_conversation(current_cid)
+                                st.session_state.show_delete_confirm = False
+                                st.session_state.current_conversation_id = ""
+                                st.session_state.messages = []
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"删除失败: {e}")
+                    with col_no:
+                        if st.button("↩️ 取消", key="btn_delete_no"):
+                            st.session_state.show_delete_confirm = False
+                            st.rerun()
+
+        else:
+            st.warning("会话管理不可用")
+
+        # ── 侧边栏：OpenClaw 状态面板 ──
+        st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+        st.subheader("🔗 OpenClaw 状态")
+
+        if ocs is not None:
+            # 刷新按钮
+            if st.button("🔄 刷新状态", key="btn_refresh_oc_status"):
+                st.session_state.pop("openclaw_status", None)
+                st.rerun()
+
+            # 使用缓存或检测（使用 quick_status，纯 HTTP，不调 CLI）
+            if "openclaw_status" not in st.session_state:
+                with st.spinner("正在检测 OpenClaw 状态..."):
+                    try:
+                        st.session_state.openclaw_status = ocs.quick_status(
+                            gateway_url=st.session_state.get("gateway_url", "http://127.0.0.1:18789"),
+                            token=st.session_state.get("gateway_token") or None,
+                        )
+                    except Exception as e:
+                        st.session_state.openclaw_status = {
+                            "overall": "offline",
+                            "models": [],
+                            "gateway_latency_ms": -1,
+                            "api_latency_ms": -1,
+                            "error": str(e),
+                        }
+
+            oc_status = st.session_state.openclaw_status
+            overall = oc_status.get("overall", "unknown")
+            emoji = OpenClawStatus.status_emoji(overall)
+            models = oc_status.get("models", [])
+            model_name = models[0] if models else "N/A"
+            gw_latency = oc_status.get("gateway_latency_ms", -1)
+            api_latency = oc_status.get("api_latency_ms", -1)
+            latency_display = f"{gw_latency}ms" if gw_latency > 0 else "N/A"
+
+            status_map = {"online": "在线", "api_offline": "API离线", "degraded": "降级", "offline": "离线"}
+            status_text = status_map.get(overall, "未知")
+
+            st.markdown(f"""
+            **Gateway:** {emoji} {status_text}
+            **模型:** `{model_name}`
+            **端口延迟:** {latency_display}
+            """)
+            if api_latency > 0:
+                st.caption(f"API 延迟: {api_latency}ms")
+        else:
+            st.warning("OpenClaw 状态检测不可用")
+
+    # ── 主区域标题 ──
     st.subheader("🤖 Agent 智能助手")
     st.markdown("与 OpenClaw Agent 对话，让 AI 帮你分析和优化通信链路")
 
-    col_ctrl, _ = st.columns([1, 4])
-    with col_ctrl:
-        if st.button("🔄 新对话", key="agent_new_chat4"):
-            st.session_state.agent_session_id = str(uuid.uuid4())
-            st.session_state.messages = []
-            st.rerun()
-
-    # --- 可滚动聊天历史 ---
+    # ── 可滚动聊天历史 ──
     msg_container = st.container(height=380)
     with msg_container:
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-    # --- 输入框（streamlit 自动固定到视口底部） ---
+    # ── 输入框 ──
     if prompt := st.chat_input("输入你的问题..."):
+        # 确保有会话
+        current_cid = st.session_state.get("current_conversation_id")
+        if not current_cid or cm is None:
+            st.error("会话未初始化，请刷新页面")
+            st.stop()
+
+        # 1. 用户消息存入 SQLite
+        try:
+            cm.add_message(current_cid, "user", prompt)
+        except Exception as e:
+            st.error(f"保存用户消息失败: {e}")
+
         # 立即显示用户消息
         st.session_state.messages.append({"role": "user", "content": prompt})
-        user_avatar_color = "#FF0000"  # Red avatar for user
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # 调用 agent
-        assistant_avatar_color = "#FFD700"  # Yellow avatar for assistant
+        # 2. 流式调用 agent，实时显示回复
         with st.chat_message("assistant"):
-            with st.spinner("小明正在思考..."):
-                response = ask_openclaw(prompt, st.session_state.agent_session_id)
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-        st.rerun()
+            start_time = time.time()
+            full_response = ""
+            tool_status_slot = st.empty()
+            content_slot = st.empty()
+
+            # 加载中提示（第一个 token 到达后自动消失）
+            with content_slot.container():
+                with st.spinner("正在连接 OpenClaw..."):
+                    pass  # spinner 会在下面被替换
+
+            try:
+                for event in ask_openclaw_stream(
+                    prompt,
+                    st.session_state.agent_session_id,
+                    gateway_url=st.session_state.get("gateway_url"),
+                    token=st.session_state.get("gateway_token"),
+                ):
+                    evt_type = event.get("type", "content")
+
+                    if evt_type == "content":
+                        full_response += event["text"]
+                        # 实时更新正文（用 markdown 渲染已收到的部分）
+                        content_slot.markdown(full_response + "▌")
+
+                    elif evt_type == "tool_call":
+                        # 工具调用开始
+                        name = event.get("name", "未知工具")
+                        tool_status_slot.info(f"🔧 调用工具: **{name}**")
+
+                    elif evt_type == "status":
+                        # 状态更新（参数拼接、思考中等）
+                        text = event.get("text", "")
+                        if text:
+                            tool_status_slot.info(text)
+
+                    elif evt_type == "tool_result":
+                        # 工具返回结果
+                        name = event.get("name", "")
+                        result_text = event.get("result", "")[:200]
+                        tool_status_slot.info(f"✅ 工具 {name} 返回: {result_text}")
+
+                    elif evt_type == "error":
+                        full_response += event["text"]
+                        content_slot.markdown(full_response)
+
+            except Exception as e:
+                full_response = f"❌ 请求异常: {e}"
+                content_slot.markdown(full_response)
+
+            # 最终渲染（去掉光标）
+            elapsed = time.time() - start_time
+            if full_response:
+                content_slot.markdown(full_response)
+            # 清除工具状态（如果有的话）
+            tool_status_slot.empty()
+            st.caption(f"⏱️ 耗时 {elapsed:.1f}s")
+
+        # 3. 回复存入 SQLite
+        try:
+            cm.add_message(current_cid, "assistant", full_response)
+        except Exception as e:
+            st.error(f"保存回复失败: {e}")
+
+        # 4. 如果是第一条消息，自动设置标题
+        try:
+            if len(st.session_state.messages) <= 2:  # 刚加入的 user + assistant
+                cm.auto_title(current_cid, prompt)
+        except Exception:
+            pass
+
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        # 不再 st.rerun()，消息已经在上方实时渲染过了
 
 # ==================== Tab 4: 仿真日志 ====================
 with tab4:
