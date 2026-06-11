@@ -1,4 +1,4 @@
-﻿# blocks/ — Reusable AFSIM Code Blocks
+# blocks/ — Reusable AFSIM Code Blocks
 
 These are extracted, verified AFSIM definition blocks from official demos.
 Copy-paste the content you need into your project files.
@@ -18,6 +18,7 @@ Copy-paste the content you need into your project files.
 | missile_ballistic.txt | SRBM/MRBM full stack: aero, mover, guidance phases, LC |
 | missile_sam.txt | SAM missile: aero + 4-stage guided mover + weapon |
 | missile_tbm.txt | TBM missiles with single/dual stage |
+| missile_seekers.txt | Missile seeker radar sensors |
 
 ### Sensors
 | File | What it contains |
@@ -33,8 +34,8 @@ Copy-paste the content you need into your project files.
 | sensor_radar_ew.txt | EW radar with jamming |
 | sensor_sar.txt | SAR sensor |
 | sensor_spin_scheduler.txt | Spin scheduler demo |
-| adar_sam.txt | SAM fire control radar |
-| adar_tracker.txt | Generic tracker radar |
+| radar_sam.txt | SAM fire control radar |
+| radar_tracker.txt | Generic tracker radar |
 
 ### Platforms
 | File | What it contains |
@@ -51,10 +52,10 @@ Copy-paste the content you need into your project files.
 |------|-----------------|
 | processor_definitions.txt | General processor syntax |
 | processor_launch.txt | Launch timing script (fixed/random) |
-| 	actics_sam.txt | SAM engagement state machine |
-| 	actics_naval_sam.txt | Naval SAM engagement logic |
-| 	actics_naval_asm.txt | Naval ASM engagement logic |
-| 	actics_naval_ssm.txt | Naval SSM engagement logic |
+| tactics_sam.txt | SAM engagement state machine |
+| tactics_naval_sam.txt | Naval SAM engagement logic |
+| tactics_naval_asm.txt | Naval ASM engagement logic |
+| tactics_naval_ssm.txt | Naval SSM engagement logic |
 
 ### Signatures & Antennas
 | File | What it contains |
@@ -62,7 +63,7 @@ Copy-paste the content you need into your project files.
 | signatures_shared.txt | Shared IR/optical/radar signatures, datalink, filter |
 | signatures_optical.txt | Optical signature definitions |
 | signatures_radar.txt | Radar signature definitions |
-| ntenna_patterns.txt | Antenna pattern templates |
+| antenna_patterns.txt | Antenna pattern templates |
 
 ### Multiresolution Demos
 | File | What it contains |
@@ -77,7 +78,6 @@ Copy-paste the content you need into your project files.
 | File | What it contains |
 |------|-----------------|
 | weapon_aam.txt | Air-to-air missile (active radar) |
-| missile_seekers.txt | Missile seeker radar sensors |
 
 ### LEO Satellite Communication
 | File | What it contains |
@@ -86,4 +86,5 @@ Copy-paste the content you need into your project files.
 | scenario_leo_comm.txt | Satellite + ground station laydown |
 | satellite_leo.txt | LEO satellite platform |
 | station_ground_leo.txt | Ground station platform |
-| nalyze_leo_comm.py | Python script: plots range, elevation, delay, FSL, RX power |
+| leo_constellation/ | LEO constellation subdirectory |
+| analyze_leo_comm.py | Python script: plots range, elevation, delay, FSL, RX power |
